@@ -158,6 +158,73 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
+   Splash
+   The tide runs sideways rather than the house sinking, so the mark stays still
+   and the water moves through it. That reads as a place in water; a house
+   sliding under reads as a flood.
+   --------------------------------------------------------------------------- */
+
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: radial-gradient(120% 90% at 50% 30%, #0b2537 0%, #04101a 60%, #020a11 100%);
+  transition: opacity 0.7s var(--ease-liquid), transform 0.7s var(--ease-liquid);
+}
+
+.splash.is-leaving {
+  opacity: 0;
+  transform: scale(1.06);
+  pointer-events: none;
+}
+
+.splash-mark {
+  width: clamp(108px, 34vw, 160px);
+  animation: surface 1s var(--ease-liquid) both;
+}
+
+.splash-mark svg {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 20px 44px rgba(99, 230, 200, 0.22));
+}
+
+/* One wavelength is 32 units wide, so translating by exactly that loops
+   seamlessly however long it runs. */
+.splash-tide {
+  animation: tide 3.2s linear infinite;
+}
+
+@keyframes tide {
+  to {
+    transform: translateX(32px);
+  }
+}
+
+.splash-name {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(2rem, 9vw, 2.7rem);
+  letter-spacing: -0.045em;
+  margin: 14px 0 0;
+  background: linear-gradient(168deg, #ffffff 8%, var(--aqua) 62%, var(--aqua-deep) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: surface 1s var(--ease-liquid) 0.35s both;
+}
+
+.splash-sub {
+  margin: 0;
+  animation: surface 1s var(--ease-liquid) 0.55s both;
+}
+
+/* ---------------------------------------------------------------------------
    Layout
    --------------------------------------------------------------------------- */
 

@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
+import { Splash } from './components/Splash';
 import { Water } from './components/Water';
 import { useAuth } from './lib/auth';
 import { useProfile } from './lib/db';
@@ -18,15 +20,25 @@ import { Today } from './screens/Today';
  * an account without one can read nothing at all, and sending it anywhere but
  * the entrance would render an empty app.
  */
+/** Once per session. A splash you see fifteen times a day is a toll, not an entrance. */
+const SEEN_SPLASH = 'gharbaar:splashed';
+
 export default function App() {
+  const [splashing, setSplashing] = useState(() => !sessionStorage.getItem(SEEN_SPLASH));
   const { session, userId, loading } = useAuth();
   const profile = useProfile(userId);
 
   const booting = loading || (!!userId && profile.isLoading);
 
+  function dismissSplash() {
+    sessionStorage.setItem(SEEN_SPLASH, '1');
+    setSplashing(false);
+  }
+
   return (
     <>
       <Water />
+      {splashing && <Splash onDone={dismissSplash} />}
       <div className="stage">
         {booting ? (
           <div className="centered">
