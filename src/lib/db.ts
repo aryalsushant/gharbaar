@@ -8,6 +8,8 @@ export type Profile = {
   display_name: string;
   avatar_url: string | null;
   roster_key: string | null;
+  /** Which flat they live in. Bills split within one, food across the house. */
+  apartment: string | null;
 };
 
 export type RosterEntry = {
@@ -25,6 +27,8 @@ export type Expense = {
   amount: number;
   description: string;
   category: string | null;
+  /** The flat a bill belongs to, or null for anything the house shares. */
+  apartment: string | null;
   items: { name: string; quantity?: number; amount?: number }[] | null;
   created_at: string;
 };
@@ -114,7 +118,7 @@ export function useProfile(userId: string | null) {
       unwrap(
         await supabase
           .from('profiles')
-          .select('id, display_name, avatar_url, roster_key')
+          .select('id, display_name, avatar_url, roster_key, apartment')
           .eq('id', userId!)
           .single()
       ) as Profile,
@@ -130,7 +134,7 @@ export function useHousehold() {
       unwrap(
         await supabase
           .from('profiles')
-          .select('id, display_name, avatar_url, roster_key')
+          .select('id, display_name, avatar_url, roster_key, apartment')
           .not('roster_key', 'is', null)
       ) as Profile[],
   });
@@ -145,7 +149,7 @@ export function useExpenses() {
       unwrap(
         await supabase
           .from('expenses')
-          .select('id, paid_by, amount, description, category, items, created_at')
+          .select('id, paid_by, amount, description, category, apartment, items, created_at')
           .order('created_at', { ascending: false })
       ) as Expense[],
   });
@@ -176,6 +180,7 @@ export function useAddExpense() {
       paidBy,
       memberIds,
       category,
+      apartment,
       items,
     }: {
       amount: number;
@@ -183,6 +188,7 @@ export function useAddExpense() {
       paidBy: string;
       memberIds: string[];
       category?: string | null;
+      apartment?: string | null;
       items?: Expense['items'];
     }) => {
       const expense = unwrap(
@@ -194,6 +200,7 @@ export function useAddExpense() {
             description: description.trim(),
             split_type: 'equal',
             category: category ?? null,
+            apartment: apartment ?? null,
             items: items ?? null,
           })
           .select('id')
