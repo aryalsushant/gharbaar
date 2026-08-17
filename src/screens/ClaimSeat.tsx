@@ -62,7 +62,11 @@ export function ClaimSeat() {
             <Avatar rosterKey={chosen.key} name={chosen.display_name} size={96} />
           </div>
           <h1 className="wordmark">{chosen.display_name}?</h1>
-          <p className="lede">Once you take this seat it is yours, so make sure it is you.</p>
+          <p className="lede">
+            {chosen.email_hint
+              ? `This seat is reserved for ${chosen.email_hint}. You can only take it if that is the address you signed in with.`
+              : 'Once you take this seat it is yours, so make sure it is you.'}
+          </p>
         </header>
 
         <form className="panel stack-lg rise rise-2" onSubmit={onConfirm}>
@@ -118,7 +122,9 @@ export function ClaimSeat() {
           >
             <Avatar rosterKey={seat.key} name={seat.display_name} size={40} />
             <span className="seat-name">{seat.display_name}</span>
-            <span className="tag">{seat.claimed ? 'taken' : 'free'}</span>
+            <span className="tag">
+              {seat.claimed ? 'taken' : (seat.email_hint ?? 'free')}
+            </span>
           </button>
         ))}
       </div>

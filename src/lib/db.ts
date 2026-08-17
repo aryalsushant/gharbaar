@@ -16,6 +16,8 @@ export type RosterEntry = {
   display_name: string;
   sort_order: number;
   claimed: boolean;
+  /** Masked, like b****@gmail.com. Null when the seat is not bound yet. */
+  email_hint: string | null;
 };
 
 export type Expense = {
