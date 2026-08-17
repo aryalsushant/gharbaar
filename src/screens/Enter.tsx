@@ -3,22 +3,11 @@ import { useState, type FormEvent } from 'react';
 import { Avatar } from '../components/Avatar';
 import { useAuth } from '../lib/auth';
 import { useClaimIdentity, usePublicRoster } from '../lib/db';
+import { closeMiss } from '../lib/email';
 import { isIOS, isInstalled } from '../lib/push';
 
 type Step = 'tiles' | 'email' | 'code';
 
-/**
- * The whole way in, in one screen: six faces, your email, a code.
- *
- * The tiles come first because that is the question a housemate can answer
- * without thinking. Asking for an email before showing them anything is asking
- * them to prove who they are before telling them where they are.
- *
- * The seat is only claimed after the code is verified, and the binding is
- * checked in the database rather than here. Tapping the wrong tile is caught,
- * but only once you have proved which inbox is yours, so this never becomes a
- * way to test whether a guessed address belongs to a particular person.
- */
 export function Enter() {
   const { session, sendCode, verifyCode } = useAuth();
   const roster = usePublicRoster();
@@ -30,6 +19,8 @@ export function Enter() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const suggestion = closeMiss(email.trim());
 
   async function pick(chosen: { key: string; display_name: string }) {
     setError(null);
@@ -123,6 +114,21 @@ export function Enter() {
               required
             />
           </label>
+
+          {suggestion && (
+            <p className="notice notice-warn" style={{ marginTop: -4 }}>
+              Did you mean{' '}
+              <button
+                type="button"
+                className="link"
+                style={{ color: 'var(--amber)' }}
+                onClick={() => setEmail(suggestion)}
+              >
+                {suggestion}
+              </button>
+              ? A code sent to the wrong address cannot be recovered.
+            </p>
+          )}
 
           <button className="btn" type="submit" disabled={busy}>
             {busy ? 'Sending' : 'Send the code'}
