@@ -37,8 +37,6 @@ const IMAGE = /\.(jpe?g|png|webp|heic)$/i;
  *           for photos taken from across a room.
  */
 const TWEAKS = {
-  // A phone screenshot with a media bar across the bottom that survived trim.
-  serene: { region: { top: 0.04, height: 0.6 } },
   // Shot from a distance, so the face lands small in a plain square crop.
   bipul: { zoom: 1.5 },
 };
