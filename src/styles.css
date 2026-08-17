@@ -179,20 +179,28 @@ body {
 }
 
 /* The drop.
-   Falls under something like gravity rather than at a constant clip: slow to
-   leave, quick by the end, stretching as it goes the way falling water does.
-   The trail behind it is what separates water from a moving dot. */
+   A teardrop is round at the bottom and drawn to a point at the top, which is
+   three of four corners rounded and the shape turned 45 degrees. The outer
+   element carries the fall so the rotation and the motion do not fight over the
+   same transform. */
 .drop {
   position: absolute;
   left: 50%;
   top: 0;
-  width: 10px;
-  height: 14px;
-  margin-left: -5px;
-  border-radius: 50% 50% 46% 46% / 60% 60% 40% 40%;
-  background: linear-gradient(180deg, #ffffff, #9ff5df 55%, var(--aqua));
-  box-shadow: 0 0 18px rgba(159, 245, 223, 0.65);
-  animation: fall 1.25s cubic-bezier(0.5, 0, 0.9, 0.62) forwards;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  animation: fall 1.5s linear forwards;
+}
+
+.drop-body {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: radial-gradient(circle at 34% 68%, #ffffff 0%, #9ff5df 45%, var(--aqua) 100%);
+  box-shadow: 0 0 18px rgba(159, 245, 223, 0.6);
 }
 
 /* The thread of water behind it, thinning as it stretches. */
@@ -200,51 +208,173 @@ body {
   content: '';
   position: absolute;
   left: 50%;
-  bottom: 60%;
+  bottom: 70%;
   width: 2px;
   margin-left: -1px;
-  height: 34vh;
+  height: 32vh;
   border-radius: 2px;
-  background: linear-gradient(180deg, rgba(159, 245, 223, 0) 0%, rgba(159, 245, 223, 0.42) 100%);
+  background: linear-gradient(180deg, rgba(159, 245, 223, 0) 0%, rgba(159, 245, 223, 0.4) 100%);
   transform-origin: bottom center;
-  animation: thread 1.25s cubic-bezier(0.5, 0, 0.9, 0.62) forwards;
+  animation: thread 1.5s linear forwards;
 }
 
+/* Slow to leave, then quick.
+   The easing lives inside the keyframes rather than on the animation, because
+   one curve cannot both hang and drop. It barely moves for the first half,
+   swelling as it gathers, then falls the rest of the screen in a fraction of
+   the time. */
 @keyframes fall {
   0% {
-    transform: translateY(-16vh) scaleY(0.85) scaleX(1.05);
+    transform: translateY(-14vh) scale(0.6);
     opacity: 0;
+    animation-timing-function: ease-out;
   }
-  14% {
+  12% {
     opacity: 1;
   }
-  /* The last stretch, where it is moving fastest and drawn thinnest. */
-  92% {
-    transform: translateY(44vh) scaleY(1.9) scaleX(0.8);
+  /* Hanging, gathering weight. */
+  52% {
+    transform: translateY(2vh) scale(1.08);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.7, 0, 0.9, 0.55);
+  }
+  /* Let go. */
+  94% {
+    transform: translateY(45vh) scaleY(1.7) scaleX(0.78);
     opacity: 1;
   }
-  /* Meeting the surface: it spreads and vanishes into the first ring. */
+  /* Flattened out of existence on the surface. */
   100% {
-    transform: translateY(48vh) scaleY(0.3) scaleX(2.4);
+    transform: translateY(48vh) scaleY(0.18) scaleX(2.3);
     opacity: 0;
   }
 }
 
+/* The thread only exists while it is actually moving fast. */
 @keyframes thread {
-  0% {
+  0%, 52% {
     opacity: 0;
-    transform: scaleY(0.1);
+    transform: scaleY(0.08);
   }
-  30% {
-    opacity: 0.5;
+  72% {
+    opacity: 0.4;
   }
-  92% {
-    opacity: 0.35;
+  94% {
+    opacity: 0.3;
     transform: scaleY(1);
   }
   100% {
     opacity: 0;
     transform: scaleY(1);
+  }
+}
+
+/* --- the splash itself ---
+   A crown thrown up at the moment of impact, and beads leaving it. Brief on
+   purpose: real ones last a fraction of a second, and anything slower reads as
+   an animation rather than water. */
+.impact {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.crown {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, 0.85);
+  border-bottom-color: transparent;
+  opacity: 0;
+  animation: crown 0.4s cubic-bezier(0.2, 0.8, 0.3, 1) 1.5s forwards;
+}
+
+@keyframes crown {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) translateY(6px);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4) translateY(-10px);
+  }
+}
+
+/* The bounce. A rebound drop is thrown straight back up out of the crown and
+   falls into the ring that follows, which is the part that makes an impact read
+   as water rather than a flash. */
+.rebound {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg) scale(0);
+  background: radial-gradient(circle at 34% 68%, #ffffff 0%, #9ff5df 50%, var(--aqua) 100%);
+  opacity: 0;
+  animation: rebound 0.78s cubic-bezier(0.3, 0, 0.6, 1) 1.54s forwards;
+}
+
+@keyframes rebound {
+  0% {
+    opacity: 0;
+    transform: rotate(-45deg) translate(0, 0) scale(0.4);
+    animation-timing-function: cubic-bezier(0.15, 0.7, 0.4, 1);
+  }
+  18% {
+    opacity: 1;
+  }
+  /* Top of the arc, hanging for an instant. */
+  55% {
+    transform: rotate(-45deg) translate(0, -46px) scale(1);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.6);
+  }
+  100% {
+    transform: rotate(-45deg) translate(0, 6px) scale(0.5);
+    opacity: 0;
+  }
+}
+
+.bead {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 32%, #ffffff, var(--aqua));
+  opacity: 0;
+  animation: bead 0.72s cubic-bezier(0.22, 0.7, 0.4, 1) 1.26s forwards;
+}
+
+/* Thrown out at different angles and heights, so it does not read as a
+   symmetrical burst. */
+.bead-1 { --x: -46px; --y: -34px; width: 6px; height: 6px; animation-delay: 1.51s; }
+.bead-2 { --x: -24px; --y: -52px; width: 8px; height: 8px; animation-delay: 1.52s; }
+.bead-3 { --x: 8px;   --y: -58px; width: 5px; height: 5px; animation-delay: 1.5s; }
+.bead-4 { --x: 30px;  --y: -46px; width: 7px; height: 7px; animation-delay: 1.53s; }
+.bead-5 { --x: 52px;  --y: -26px; width: 5px; height: 5px; animation-delay: 1.51s; }
+.bead-6 { --x: -60px; --y: -12px; width: 4px; height: 4px; animation-delay: 1.54s; }
+
+@keyframes bead {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.5);
+  }
+  15% {
+    opacity: 1;
+  }
+  /* Up and out, then gravity takes it back down past where it started. */
+  55% {
+    transform: translate(var(--x), var(--y)) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(var(--x) * 1.35), 14px) scale(0.6);
+    opacity: 0;
   }
 }
 
@@ -269,9 +399,9 @@ body {
   animation: spread 3s cubic-bezier(0.16, 0.7, 0.32, 1) forwards;
 }
 
-.ripple-1 { animation-delay: 1.25s; }
-.ripple-2 { animation-delay: 1.52s; }
-.ripple-3 { animation-delay: 1.86s; }
+.ripple-1 { animation-delay: 1.52s; }
+.ripple-2 { animation-delay: 1.82s; }
+.ripple-3 { animation-delay: 2.18s; }
 
 @keyframes spread {
   0% {
@@ -304,7 +434,7 @@ body {
    arrives with the impact, slightly small, and settles. */
 .splash-mark {
   width: clamp(104px, 30vw, 140px);
-  animation: emerge 1.6s cubic-bezier(0.16, 0.7, 0.32, 1) 1.25s both;
+  animation: emerge 1.6s cubic-bezier(0.16, 0.7, 0.32, 1) 2.05s both;
 }
 
 .splash-mark svg {
@@ -327,7 +457,7 @@ body {
 /* The same emerging as the mark, ringed so the face reads as the thing the
    drop landed on rather than a photo placed on top of it. */
 .splash-face {
-  animation: emerge 1.6s cubic-bezier(0.16, 0.7, 0.32, 1) 1.25s both;
+  animation: emerge 1.6s cubic-bezier(0.16, 0.7, 0.32, 1) 2.05s both;
 }
 
 .splash-face .avatar {
@@ -348,18 +478,19 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: emerge 1.5s cubic-bezier(0.16, 0.7, 0.32, 1) 1.6s both;
+  animation: emerge 1.5s cubic-bezier(0.16, 0.7, 0.32, 1) 2.35s both;
 }
 
 .splash-sub {
   margin: 4px 0 0;
-  animation: emerge 1.5s cubic-bezier(0.16, 0.7, 0.32, 1) 1.85s both;
+  animation: emerge 1.5s cubic-bezier(0.16, 0.7, 0.32, 1) 2.6s both;
 }
 
 /* Reduced motion gets the settled picture: no drop, no rings, nothing moving. */
 @media (prefers-reduced-motion: reduce) {
   .drop,
-  .ripples {
+  .ripples,
+  .impact {
     display: none;
   }
 }

@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 
 import { Avatar } from './Avatar';
 
-const RUN_MS = 4600;
+const RUN_MS = 5200;
+
+/** When the drop meets the surface. Everything else hangs off this. */
+const IMPACT_MS = 1500;
 
 /**
  * One drop, and what it does to still water.
@@ -47,69 +50,98 @@ export function Splash({ onDone, person }: { onDone: () => void; person?: Person
      *
      * Built rather than sampled: a sine falling in pitch is the shape an ear
      * reads as something entering water, and a short resonant tail is the
-     * surface answering. Two oscillators and a filter weigh nothing and never
-     * need a licence.
+     * surface answering.
+     *
+     * The awkward part is permission. A browser suspends a fresh AudioContext
+     * until the page has been touched, and the previous version marked the
+     * sound as played the moment it tried, so the fallback on first touch never
+     * ran and it was silent forever. Nothing counts as played until the context
+     * is actually running.
      */
-    function play() {
+    let ctx: AudioContext | null = null;
+
+    function schedule(context: AudioContext) {
       if (played.current) return;
       played.current = true;
 
+      const at = context.currentTime + 0.05;
+
+      // The impact.
+      const drop = context.createOscillator();
+      const dropGain = context.createGain();
+      drop.type = 'sine';
+      drop.frequency.setValueAtTime(900, at);
+      drop.frequency.exponentialRampToValueAtTime(180, at + 0.18);
+      dropGain.gain.setValueAtTime(0.0001, at);
+      dropGain.gain.exponentialRampToValueAtTime(0.24, at + 0.012);
+      dropGain.gain.exponentialRampToValueAtTime(0.0001, at + 0.45);
+      drop.connect(dropGain).connect(context.destination);
+      drop.start(at);
+      drop.stop(at + 0.5);
+
+      // The surface ringing after it, quieter and slower.
+      const ring = context.createOscillator();
+      const ringGain = context.createGain();
+      const shape = context.createBiquadFilter();
+      shape.type = 'lowpass';
+      shape.frequency.setValueAtTime(1300, at);
+      shape.frequency.exponentialRampToValueAtTime(320, at + 1.7);
+      ring.type = 'sine';
+      ring.frequency.setValueAtTime(330, at + 0.05);
+      ring.frequency.exponentialRampToValueAtTime(128, at + 1.6);
+      ringGain.gain.setValueAtTime(0.0001, at + 0.05);
+      ringGain.gain.exponentialRampToValueAtTime(0.085, at + 0.17);
+      ringGain.gain.exponentialRampToValueAtTime(0.0001, at + 1.85);
+      ring.connect(shape).connect(ringGain).connect(context.destination);
+      ring.start(at + 0.05);
+      ring.stop(at + 1.9);
+    }
+
+    /** Fires when the drop lands, or on first touch if audio was blocked. */
+    function attempt() {
       try {
         const Ctx =
           window.AudioContext ??
           (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        const ctx = new Ctx();
-        const at = ctx.currentTime + 1.25; // lands with the drop, not before it
-
-        // The impact.
-        const drop = ctx.createOscillator();
-        const dropGain = ctx.createGain();
-        drop.type = 'sine';
-        drop.frequency.setValueAtTime(900, at);
-        drop.frequency.exponentialRampToValueAtTime(180, at + 0.18);
-        dropGain.gain.setValueAtTime(0.0001, at);
-        dropGain.gain.exponentialRampToValueAtTime(0.22, at + 0.012);
-        dropGain.gain.exponentialRampToValueAtTime(0.0001, at + 0.42);
-        drop.connect(dropGain).connect(ctx.destination);
-        drop.start(at);
-        drop.stop(at + 0.45);
-
-        // The surface ringing after it, quieter and slower.
-        const ring = ctx.createOscillator();
-        const ringGain = ctx.createGain();
-        const shape = ctx.createBiquadFilter();
-        shape.type = 'lowpass';
-        shape.frequency.setValueAtTime(1200, at);
-        shape.frequency.exponentialRampToValueAtTime(320, at + 1.6);
-        ring.type = 'sine';
-        ring.frequency.setValueAtTime(320, at + 0.05);
-        ring.frequency.exponentialRampToValueAtTime(132, at + 1.5);
-        ringGain.gain.setValueAtTime(0.0001, at + 0.05);
-        ringGain.gain.exponentialRampToValueAtTime(0.075, at + 0.16);
-        ringGain.gain.exponentialRampToValueAtTime(0.0001, at + 1.7);
-        ring.connect(shape).connect(ringGain).connect(ctx.destination);
-        ring.start(at + 0.05);
-        ring.stop(at + 1.75);
-
-        window.setTimeout(() => void ctx.close(), 2600);
+        ctx = ctx ?? new Ctx();
+        if (ctx.state === 'running') {
+          schedule(ctx);
+          return;
+        }
+        void ctx.resume().then(() => {
+          if (ctx && ctx.state === 'running') schedule(ctx);
+        });
       } catch {
         // No audio available. Not worth failing the splash over.
       }
     }
 
-    play();
+    // Timed to the moment the drop meets the surface.
+    const landing = window.setTimeout(attempt, IMPACT_MS);
+    const onTouch = () => attempt();
+    window.addEventListener('pointerdown', onTouch);
 
-    // Browsers that refuse audio until the page has been touched get one more
-    // chance. Listening rather than requiring a tap means most people hear it
-    // and nobody has to do anything.
-    const onTouch = () => play();
-    window.addEventListener('pointerdown', onTouch, { once: true });
-    return () => window.removeEventListener('pointerdown', onTouch);
+    return () => {
+      window.clearTimeout(landing);
+      window.removeEventListener('pointerdown', onTouch);
+      window.setTimeout(() => void ctx?.close(), 2600);
+    };
   }, []);
 
   return (
     <div className={`splash${leaving ? ' is-leaving' : ''}`} role="presentation">
-      <div className="drop" aria-hidden="true" />
+      <div className="drop" aria-hidden="true">
+        <span className="drop-body" />
+      </div>
+
+      {/* What the impact throws up: a crown, then beads falling back. */}
+      <div className="impact" aria-hidden="true">
+        <span className="crown" />
+        <span className="rebound" />
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <span key={i} className={`bead bead-${i + 1}`} />
+        ))}
+      </div>
 
       <div className="ripples" aria-hidden="true">
         <span className="ripple ripple-1" />
