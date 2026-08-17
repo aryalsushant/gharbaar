@@ -100,6 +100,10 @@ export function Enter() {
           <p className="tag">Hello {seat.display_name}</p>
           <h1 className="wordmark">Your email</h1>
           <p className="lede">We send a six digit code. No password, ever.</p>
+          <p className="lede" style={{ marginTop: 10 }}>
+            It has to be the address your seat was set up with. Another one will get a
+            code, but not this seat.
+          </p>
         </header>
 
         <form className="panel stack-lg rise rise-2" onSubmit={submitEmail}>
