@@ -779,18 +779,23 @@ h2 {
   gap: 11px;
 }
 
+/* Centred, so the shape has something to hold.
+   Left-aligned content in a wide box stretches the blob into a squashed oval
+   with an empty right half. Stacking the face over the name makes the tile
+   roughly square, which is the only proportion a drop shape reads well at. */
 .seat {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  padding: 18px 18px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 16px;
   cursor: pointer;
-  text-align: left;
+  text-align: center;
   color: var(--ink);
   background: linear-gradient(150deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
   border: 1px solid var(--hairline);
-  border-radius: 34% 66% 40% 60% / 44% 40% 60% 56%;
+  border-radius: 42% 58% 46% 54% / 48% 44% 56% 52%;
   box-shadow: var(--wet);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
