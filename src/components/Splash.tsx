@@ -107,30 +107,66 @@ export function Splash({ onDone, person }: { onDone: () => void; person?: Person
 
   return (
     <div className={`splash${leaving ? ' is-leaving' : ''}`} role="presentation">
-      <div
-        className="drop"
-        aria-hidden="true"
-        onAnimationEnd={(event) => {
-          if (event.animationName === 'fall') impact();
-        }}
-      >
-        <span className="drop-body" />
-      </div>
+      {/*
+        The gooey part. A source blob at the top, a drop that necks away from it
+        and falls, and a pool that swells to meet it.
 
-      {/* What the impact throws up: a crown, a rebound, and beads falling back. */}
-      <div className="impact" aria-hidden="true">
-        <span className="crown" />
-        <span className="rebound" />
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <span key={i} className={`bead bead-${i + 1}`} />
-        ))}
-      </div>
+        The merging is done by a filter, not by drawing: blur everything, then
+        push the alpha through a steep curve so soft edges snap back to hard
+        ones. Shapes that overlap after the blur come out as one surface, which
+        is why the drop appears to stretch away and later melt in rather than
+        sliding over the top.
+      */}
+      <svg className="goo" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+        <defs>
+          <filter id="goo-filter">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2.4" result="blur" />
+            <feColorMatrix
+              in="blur"
+              mode="matrix"
+              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -12"
+              result="goo"
+            />
+          </filter>
 
-      <div className="ripples" aria-hidden="true">
-        <span className="ripple ripple-1" />
-        <span className="ripple ripple-2" />
-        <span className="ripple ripple-3" />
-      </div>
+          <linearGradient id="goo-fill" gradientUnits="userSpaceOnUse" x1="30" y1="0" x2="70" y2="100">
+            <stop offset="0" stopColor="#ffffff" />
+            <stop offset="0.4" stopColor="#9ff5df" />
+            <stop offset="1" stopColor="#3ec9c4" />
+          </linearGradient>
+        </defs>
+
+        <g filter="url(#goo-filter)" fill="url(#goo-fill)">
+          <circle className="blob-source" cx="50" cy="6" r="7" />
+          <circle
+            className="blob-drop"
+            cx="50"
+            cy="6"
+            r="5.4"
+            onAnimationEnd={(event) => {
+              if (event.animationName === 'blob-fall') impact();
+            }}
+          />
+          <circle className="blob-pool" cx="50" cy="88" r="6" />
+        </g>
+
+        {/* The splash: the same drop, broken into smaller ones.
+            No rings and no crown. Water that lands throws water, so what leaves
+            the surface is the material that arrived, in its own gooey group so
+            the pieces merge with each other while still being thrown clear of
+            the pool. */}
+        <g className="splashes" filter="url(#goo-filter)" fill="url(#goo-fill)">
+          <circle className="spray spray-1" cx="50" cy="88" r="2.2" />
+          <circle className="spray spray-2" cx="50" cy="88" r="2.8" />
+          <circle className="spray spray-3" cx="50" cy="88" r="1.7" />
+          <circle className="spray spray-4" cx="50" cy="88" r="2.5" />
+          <circle className="spray spray-5" cx="50" cy="88" r="1.5" />
+          <circle className="spray spray-6" cx="50" cy="88" r="2" />
+          <circle className="spray spray-7" cx="50" cy="88" r="1.3" />
+          <circle className="spray spray-8" cx="50" cy="88" r="1.9" />
+        </g>
+
+      </svg>
 
       <div className="splash-core">
         {/* Once somebody is signed in the drop lands on them rather than on a

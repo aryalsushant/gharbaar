@@ -46,7 +46,6 @@ export function Today() {
   const requestSwap = useRequestSwap(duty?.id);
   const closeRequest = useCloseSwapRequest(duty?.id);
 
-  const [picked, setPicked] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const todayKey = toDateKey(new Date());
@@ -160,7 +159,6 @@ export function Today() {
     run(async () => {
       await applySwap.mutateAsync(plan.rows);
       await closeRequest.mutateAsync(requestId);
-      setPicked(null);
     });
   }
 
@@ -244,8 +242,6 @@ export function Today() {
   const tonightDone = tonight ? completionFor(tonight.date) : undefined;
   const iAmCooking = tonight?.assignee === userId;
 
-  const pickedDay = picked ? days.find((d) => d.date === picked) : null;
-  const pickedRequest = pickedDay ? requestFor(pickedDay.date) : undefined;
   const openRequests = (requests.data ?? []).filter((r) => r.date >= todayKey);
 
   return (
@@ -388,63 +384,8 @@ export function Today() {
           photoOf={photoOf}
           askedOn={(date) => !!requestFor(date)}
           doneOn={(date) => !!completionFor(date)}
-          onPick={(date) => setPicked(date === picked ? null : date)}
         />
       </section>
-
-      {pickedDay && (
-        <section className="panel stack-lg rise rise-1">
-          <div className="spread">
-            <div>
-              <p className="tag">{dayLabel(pickedDay.date, todayKey)}</p>
-              <h2 style={{ margin: 0 }}>{nameOf(pickedDay.assignee)}</h2>
-            </div>
-            <button className="link" onClick={() => setPicked(null)}>
-              Close
-            </button>
-          </div>
-
-          {pickedRequest ? (
-            pickedDay.assignee === userId ? (
-              <p className="lede" style={{ maxWidth: 'none' }}>
-                You have asked for cover on this night. It stays in the list above until
-                somebody takes it.
-              </p>
-            ) : (
-              <button
-                className="btn"
-                style={{ marginTop: 14 }}
-                disabled={applySwap.isPending}
-                onClick={() => takeOver(pickedDay.date, pickedRequest.id)}
-              >
-                I will take this night
-              </button>
-            )
-          ) : pickedDay.assignee === userId ? (
-            <button
-              className="btn btn-quiet"
-              style={{ marginTop: 14 }}
-              disabled={requestSwap.isPending}
-              onClick={() =>
-                run(() =>
-                  requestSwap.mutateAsync({
-                    date: pickedDay.date,
-                    requestedBy: userId!,
-                    note: '',
-                  })
-                )
-              }
-            >
-              I cannot cook this night
-            </button>
-          ) : (
-            <p className="lede" style={{ maxWidth: 'none' }}>
-              Only {nameOf(pickedDay.assignee)} can give this night away. Nobody gets
-              volunteered.
-            </p>
-          )}
-        </section>
-      )}
 
       <div className="stack-lg">{userId && <PushSetup userId={userId} />}</div>
 

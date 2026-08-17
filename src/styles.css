@@ -15,6 +15,14 @@
  */
 
 :root {
+  /* The bead. Light gathers top-left and falls away bottom-right, which is what
+     makes a flat panel read as something with a wet surface. Used by every card
+     so they belong to one material rather than four. */
+  --wet: inset 10px 10px 20px rgba(2, 10, 17, 0.4), inset -10px -10px 22px rgba(255, 255, 255, 0.06),
+    0 20px 38px -26px rgba(0, 0, 0, 0.75);
+  --wet-lit: inset 10px 10px 20px rgba(2, 10, 17, 0.35),
+    inset -10px -10px 24px rgba(159, 245, 223, 0.1), 0 20px 42px -24px var(--aqua-glow);
+
   /* Ground */
   --abyss: #04101a;
   --abyss-deep: #020a11;
@@ -178,272 +186,141 @@ body {
   pointer-events: none;
 }
 
-/* The drop.
-   A teardrop is round at the bottom and drawn to a point at the top, which is
-   three of four corners rounded and the shape turned 45 degrees. The outer
-   element carries the fall so the rotation and the motion do not fight over the
-   same transform. */
-.drop {
+/* The blobs.
+   A square box so the circles stay round, tall enough that the fall covers real
+   distance, and sitting just above centre so the pool lands where the face
+   appears. */
+.goo {
   position: absolute;
   left: 50%;
   top: 0;
-  width: 16px;
-  height: 16px;
-  margin-left: -8px;
-  animation: fall 1.15s linear forwards;
+  width: 54vh;
+  height: 54vh;
+  max-width: 92vw;
+  max-height: 92vw;
+  transform: translateX(-50%);
+  overflow: visible;
 }
 
-/* Glass, not paint.
-   Water is mostly what is behind it: a faint tint, a bright rim where the light
-   bends round the edge, a dark side opposite, and one small specular highlight.
-   The backdrop-filter is what makes it read as transparent rather than as a
-   pale blob. */
-.drop-body {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.28) 0%,
-    rgba(159, 245, 223, 0.16) 45%,
-    rgba(36, 166, 160, 0.22) 100%
-  );
-  backdrop-filter: blur(1px) saturate(150%) brightness(1.15);
-  -webkit-backdrop-filter: blur(1px) saturate(150%) brightness(1.15);
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  box-shadow:
-    inset -2px -3px 7px rgba(255, 255, 255, 0.5),
-    inset 3px 4px 9px rgba(10, 60, 84, 0.35),
-    0 0 14px rgba(159, 245, 223, 0.4);
+/* The source. It swells, necks down as the drop pulls away, then settles back,
+   which is the whole trick: the neck is two circles the filter has not quite
+   let go of yet. */
+.blob-source {
+  transform-origin: 50px 6px;
+  animation: blob-source 1.15s ease-in-out forwards;
 }
 
-/* The catchlight. One small bright spot is most of what tells an eye that
-   something is wet rather than matte. */
-.drop-body::before {
-  content: '';
-  position: absolute;
-  left: 26%;
-  top: 46%;
-  width: 26%;
-  height: 20%;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
-  filter: blur(0.5px);
-}
-
-/* The thread of water behind it, thinning as it stretches. */
-.drop::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 70%;
-  width: 2px;
-  margin-left: -1px;
-  height: 32vh;
-  border-radius: 2px;
-  background: linear-gradient(180deg, rgba(159, 245, 223, 0) 0%, rgba(159, 245, 223, 0.4) 100%);
-  transform-origin: bottom center;
-  animation: thread 1.15s linear forwards;
-}
-
-/* A steady fall. An earlier version hung at the top and then dropped, which
-   read as a decision rather than as water: real drops leave and keep going. */
-@keyframes fall {
+@keyframes blob-source {
   0% {
-    transform: translateY(-14vh) scale(0.92);
-    opacity: 0;
+    transform: scale(0.5);
   }
-  10% {
-    opacity: 1;
+  22% {
+    transform: scale(1.12) scaleY(1.3);
   }
-  /* Drawn out slightly by the speed, as falling water is. */
-  92% {
-    transform: translateY(45vh) scaleY(1.4) scaleX(0.86);
-    opacity: 1;
-  }
-  /* Flattened out of existence on the surface. */
-  100% {
-    transform: translateY(48vh) scaleY(0.18) scaleX(2.3);
-    opacity: 0;
-  }
-}
-
-/* The thread only exists while it is actually moving fast. */
-@keyframes thread {
-  0%, 18% {
-    opacity: 0;
-    transform: scaleY(0.08);
+  /* Stretched thin at the moment it lets go. */
+  38% {
+    transform: scale(0.92) scaleY(1.05);
   }
   60% {
-    opacity: 0.4;
-  }
-  94% {
-    opacity: 0.3;
-    transform: scaleY(1);
+    transform: scale(0.72);
   }
   100% {
+    transform: scale(0.4);
     opacity: 0;
-    transform: scaleY(1);
   }
 }
 
-/* --- the splash itself ---
-   A crown thrown up at the moment of impact, and beads leaving it. Brief on
-   purpose: real ones last a fraction of a second, and anything slower reads as
-   an animation rather than water. */
-.impact {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
+/* The drop itself. Slow while it is still attached, then steady once free,
+   stretching as it goes and flattening as it meets the pool. */
+.blob-drop {
+  transform-origin: 50px 6px;
+  animation: blob-fall 1.15s linear forwards;
 }
 
-.crown {
-  position: absolute;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  border: 2.5px solid rgba(255, 255, 255, 0.85);
-  border-bottom-color: transparent;
-  opacity: 0;
-  animation: crown 0.4s cubic-bezier(0.2, 0.8, 0.3, 1) 1.15s forwards;
-}
-
-@keyframes crown {
+@keyframes blob-fall {
   0% {
-    opacity: 0;
-    transform: scale(0.2) translateY(6px);
+    transform: translateY(0) scale(0.6);
   }
-  30% {
-    opacity: 1;
+  26% {
+    transform: translateY(2px) scaleY(1.35) scaleX(0.85);
   }
+  /* Free of the source and falling. */
+  40% {
+    transform: translateY(14px) scaleY(1.2) scaleX(0.9);
+  }
+  88% {
+    transform: translateY(74px) scaleY(1.25) scaleX(0.88);
+  }
+  /* Meeting the pool. */
   100% {
-    opacity: 0;
-    transform: scale(2.4) translateY(-10px);
+    transform: translateY(82px) scaleY(0.75) scaleX(1.25);
   }
 }
 
-/* The bounce. A rebound drop is thrown straight back up out of the crown and
-   falls into the ring that follows, which is the part that makes an impact read
-   as water rather than a flash. */
-.rebound {
-  position: absolute;
-  width: 11px;
-  height: 11px;
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg) scale(0);
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.3) 0%,
-    rgba(159, 245, 223, 0.18) 50%,
-    rgba(36, 166, 160, 0.24) 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  box-shadow: inset -1px -2px 5px rgba(255, 255, 255, 0.45);
-  opacity: 0;
-  animation: rebound 0.78s cubic-bezier(0.3, 0, 0.6, 1) 1.19s forwards;
+/* The pool. Nothing until the drop is close, then it swells to take it and
+   settles wide and flat, which is what a surface does after swallowing one. */
+.blob-pool {
+  transform-origin: 50px 88px;
+  animation: blob-pool 1.9s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
 }
 
-@keyframes rebound {
-  0% {
-    opacity: 0;
-    transform: rotate(-45deg) translate(0, 0) scale(0.4);
-    animation-timing-function: cubic-bezier(0.15, 0.7, 0.4, 1);
+@keyframes blob-pool {
+  0%, 62% {
+    transform: scale(0);
   }
-  18% {
-    opacity: 1;
+  78% {
+    transform: scale(0.55);
   }
-  /* Top of the arc, hanging for an instant. */
-  55% {
-    transform: rotate(-45deg) translate(0, -46px) scale(1);
-    opacity: 1;
-    animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.6);
+  /* Taking the drop. */
+  88% {
+    transform: scale(1.15) scaleY(0.9);
   }
+  /* Spreading out and thinning away. */
   100% {
-    transform: rotate(-45deg) translate(0, 6px) scale(0.5);
+    transform: scale(2.6) scaleY(0.18);
     opacity: 0;
   }
 }
 
-.bead {
-  position: absolute;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 32%, #ffffff, var(--aqua));
+/* The splash. Thrown up out of the pool the instant the drop arrives, at uneven
+   angles so it does not read as a symmetrical burst, and pulled back down past
+   where it started. */
+/* transform-box matters more than it looks. An SVG element scales about the
+   centre of the viewBox by default, not its own centre, so each spray was being
+   dragged toward the middle of the box as it grew rather than leaving from
+   where it sat. */
+.spray {
+  transform-box: fill-box;
+  transform-origin: center;
   opacity: 0;
-  animation: bead 0.72s cubic-bezier(0.22, 0.7, 0.4, 1) 1.26s forwards;
+  animation: spray 0.75s cubic-bezier(0.2, 0.7, 0.4, 1) 1.12s forwards;
 }
 
-/* Thrown out at different angles and heights, so it does not read as a
-   symmetrical burst. */
-.bead-1 { --x: -46px; --y: -34px; width: 6px; height: 6px; animation-delay: 1.16s; }
-.bead-2 { --x: -24px; --y: -52px; width: 8px; height: 8px; animation-delay: 1.17s; }
-.bead-3 { --x: 8px;   --y: -58px; width: 5px; height: 5px; animation-delay: 1.15s; }
-.bead-4 { --x: 30px;  --y: -46px; width: 7px; height: 7px; animation-delay: 1.18s; }
-.bead-5 { --x: 52px;  --y: -26px; width: 5px; height: 5px; animation-delay: 1.16s; }
-.bead-6 { --x: -60px; --y: -12px; width: 4px; height: 4px; animation-delay: 1.19s; }
+.spray-1 { --x: -15px; --y: -13px; animation-delay: 1.13s; }
+.spray-2 { --x: -7px;  --y: -21px; animation-delay: 1.12s; }
+.spray-3 { --x: 4px;   --y: -24px; animation-delay: 1.15s; }
+.spray-4 { --x: 11px;  --y: -18px; animation-delay: 1.12s; }
+.spray-5 { --x: 19px;  --y: -10px; animation-delay: 1.16s; }
+.spray-6 { --x: -21px; --y: -6px;  animation-delay: 1.14s; }
+.spray-7 { --x: 26px;  --y: -3px;  animation-delay: 1.17s; }
+.spray-8 { --x: -3px;  --y: -27px; animation-delay: 1.13s; }
 
-@keyframes bead {
+@keyframes spray {
   0% {
     opacity: 0;
-    transform: translate(0, 0) scale(0.5);
+    transform: translate(0, 0) scale(0.4);
   }
-  15% {
+  14% {
     opacity: 1;
   }
-  /* Up and out, then gravity takes it back down past where it started. */
-  55% {
+  /* Top of the arc. */
+  52% {
     transform: translate(var(--x), var(--y)) scale(1);
     opacity: 1;
   }
+  /* Gravity takes it back past the surface. */
   100% {
-    transform: translate(calc(var(--x) * 1.35), 14px) scale(0.6);
-    opacity: 0;
-  }
-}
-
-/* The rings. Same easing, staggered, each fading as it widens, so they read as
-   one event spreading rather than three animations running. */
-.ripples {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-}
-
-/* Size rather than scale. A transform multiplies the border too, so a 1.5px
-   ring at 90x becomes a 135px band, which is a grey arc rather than a ripple. */
-.ripple {
-  position: absolute;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  border: 1.5px solid rgba(159, 245, 223, 0.5);
-  opacity: 0;
-  animation: spread 3s cubic-bezier(0.16, 0.7, 0.32, 1) forwards;
-}
-
-.ripple-1 { animation-delay: 1.17s; }
-.ripple-2 { animation-delay: 1.47s; }
-.ripple-3 { animation-delay: 1.83s; }
-
-@keyframes spread {
-  0% {
-    width: 0;
-    height: 0;
-    opacity: 0;
-  }
-  8% {
-    opacity: 0.8;
-  }
-  100% {
-    /* Wide enough to leave the screen on a phone or a laptop. */
-    width: 190vmax;
-    height: 190vmax;
+    transform: translate(calc(var(--x) * 1.5), 5px) scale(0.4);
     opacity: 0;
   }
 }
@@ -516,9 +393,7 @@ body {
 
 /* Reduced motion gets the settled picture: no drop, no rings, nothing moving. */
 @media (prefers-reduced-motion: reduce) {
-  .drop,
-  .ripples,
-  .impact {
+  .goo {
     display: none;
   }
 }
@@ -601,15 +476,13 @@ h2 {
 
 .panel {
   position: relative;
-  background: var(--glass);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.03));
   border: 1px solid var(--hairline);
-  border-radius: var(--bend);
+  border-radius: 22px 30px 24px 28px / 26px 24px 30px 26px;
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
   padding: 26px 22px;
-  box-shadow:
-    0 24px 60px -28px rgba(0, 0, 0, 0.85),
-    inset 0 1px 0 0 var(--hairline-bright);
+  box-shadow: var(--wet);
 }
 
 /* A wet highlight running along the top edge, so the panel catches light
@@ -891,13 +764,14 @@ h2 {
   flex-direction: column;
   align-items: flex-start;
   gap: 3px;
-  padding: 17px 16px;
+  padding: 18px 18px;
   cursor: pointer;
   text-align: left;
   color: var(--ink);
-  background: var(--glass);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
   border: 1px solid var(--hairline);
-  border-radius: var(--bend);
+  border-radius: 34% 66% 40% 60% / 44% 40% 60% 56%;
+  box-shadow: var(--wet);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   animation: surface 0.9s var(--ease-liquid) both;
@@ -1032,37 +906,72 @@ h2 {
   margin: 12px 0 14px;
 }
 
+/* Tonight and tomorrow are water drops.
+   The shape is an uneven border-radius that drifts between two states, and the
+   depth is inset shadows: bright where light would sit on the top-left of a
+   bead, dark where it would fall away. Adapted rather than copied from the
+   light-background version of this trick, which uses black insets that would
+   only muddy a dark screen.
+   The corners are deliberately gentler than a true blob. Anything rounder eats
+   into the face and the date, and a card you cannot read is not a nice card. */
 .headline-day {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 9px;
-  padding: 22px 14px 18px;
+  padding: 26px 18px 22px;
   cursor: pointer;
   color: var(--ink);
-  background: var(--glass);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03));
   border: 1px solid var(--hairline);
-  border-radius: var(--bend);
+  border-radius: 44% 56% 46% 54% / 48% 44% 56% 52%;
   backdrop-filter: blur(22px) saturate(170%);
   -webkit-backdrop-filter: blur(22px) saturate(170%);
-  animation: surface 0.9s var(--ease-liquid) both;
+  box-shadow:
+    inset 12px 12px 22px rgba(2, 10, 17, 0.45),
+    inset -12px -12px 26px rgba(255, 255, 255, 0.07),
+    0 22px 40px -26px rgba(0, 0, 0, 0.8);
+  animation:
+    surface 0.9s var(--ease-liquid) both,
+    bead 9s ease-in-out 1s infinite alternate;
   transition:
     transform 0.45s var(--ease-liquid),
     border-color 0.45s var(--ease-liquid),
     background 0.45s var(--ease-liquid);
 }
 
+/* The two catchlights every drawn water drop has, and the reason the eye reads
+   it as a bead rather than a rounded box. */
+/* No catchlight. A white smear over a dark card renders as a grey sphere stuck
+   on top of it, and the inset shadows already do the work of making the surface
+   read as wet. The money tiles prove it: same material, no highlight, better.
+*/
+
+/* Two shapes, drifting. Slow enough to notice only if you look. */
+@keyframes bead {
+  from {
+    border-radius: 44% 56% 46% 54% / 48% 44% 56% 52%;
+  }
+  to {
+    border-radius: 60% 40% 55% 45% / 38% 52% 48% 62%;
+  }
+}
+
 .headline-day:hover {
   transform: translateY(-3px);
-  background: var(--glass-lift);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.05));
   border-color: var(--hairline-bright);
 }
 
 /* Tonight is the only card carrying the accent, so the eye lands on it first. */
 .headline-day.is-today {
   border-color: rgba(99, 230, 200, 0.5);
-  background: rgba(99, 230, 200, 0.08);
-  box-shadow: 0 20px 46px -26px var(--aqua-glow);
+  background: linear-gradient(150deg, rgba(99, 230, 200, 0.16), rgba(99, 230, 200, 0.05));
+  box-shadow:
+    inset 12px 12px 22px rgba(2, 10, 17, 0.4),
+    inset -12px -12px 26px rgba(159, 245, 223, 0.12),
+    0 22px 46px -24px var(--aqua-glow);
 }
 
 .headline-day .avatar {
@@ -1109,12 +1018,19 @@ h2 {
   align-items: center;
   gap: 12px;
   text-align: left;
-  cursor: pointer;
-  padding: 13px 16px;
+  padding: 12px 22px;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid var(--hairline);
-  border-radius: var(--bend-sm);
+  /* Capsules, not rectangles.
+     Two blobs sitting on a stack of boxes was the thing that looked wrong: the
+     corners disagreed with everything above them. A fully rounded row has no
+     corners to disagree with, and a column of them reads as drops running down
+     rather than as a table. */
+  border-radius: 999px;
+  box-shadow:
+    inset 6px 6px 14px rgba(2, 10, 17, 0.3),
+    inset -6px -6px 16px rgba(255, 255, 255, 0.045);
   animation: surface 0.8s var(--ease-liquid) both;
   transition:
     background 0.4s var(--ease-liquid),
@@ -1399,13 +1315,14 @@ h2 {
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 20px 12px 16px;
+  padding: 22px 14px 18px;
   text-align: center;
   text-decoration: none;
   color: var(--ink);
-  background: var(--glass);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
   border: 1px solid var(--hairline);
-  border-radius: var(--bend);
+  border-radius: 38% 62% 42% 58% / 44% 40% 60% 56%;
+  box-shadow: var(--wet);
   backdrop-filter: blur(22px) saturate(170%);
   -webkit-backdrop-filter: blur(22px) saturate(170%);
   animation: surface 0.9s var(--ease-liquid) both;
@@ -1595,9 +1512,9 @@ h2 {
     'when who  amount';
   align-items: center;
   gap: 2px 12px;
-  padding: 13px 16px;
+  padding: 14px 20px;
   border: 1px solid var(--hairline);
-  border-radius: var(--bend-sm);
+  border-radius: 26px;
   background: rgba(255, 255, 255, 0.035);
 }
 
@@ -1636,13 +1553,14 @@ h2 {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 22px 16px;
+  padding: 24px 18px;
   text-align: center;
   text-decoration: none;
   color: var(--ink);
-  background: var(--glass);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
   border: 1px solid var(--hairline);
-  border-radius: var(--bend);
+  border-radius: 40% 60% 44% 56% / 46% 42% 58% 54%;
+  box-shadow: var(--wet);
   backdrop-filter: blur(22px) saturate(170%);
   -webkit-backdrop-filter: blur(22px) saturate(170%);
   transition:
@@ -1869,6 +1787,10 @@ h2 {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .headline-day {
+    border-radius: var(--bend);
+  }
+
   *,
   *::before,
   *::after {

@@ -10,7 +10,6 @@ type Props = {
   photoOf: (userId: string | null) => string | null;
   doneOn: (date: string) => boolean;
   askedOn: (date: string) => boolean;
-  onPick: (date: string) => void;
 };
 
 /**
@@ -23,6 +22,10 @@ type Props = {
  * Seven days, not fourteen. The strip is computed from today, so it rolls
  * forward by itself and never needs resetting; a fortnight was just five more
  * rows nobody read.
+ *
+ * Nothing here is clickable. Tapping a day used to open a panel underneath the
+ * strip, which is below the fold on a phone: you tapped, something happened
+ * somewhere you could not see, and it looked broken. A rota is for reading.
  */
 export function DayStrip({
   days,
@@ -32,7 +35,6 @@ export function DayStrip({
   photoOf,
   doneOn,
   askedOn,
-  onPick,
 }: Props) {
   const flags = (day: DutyDay) => (
     <span className="strip-flags">
@@ -48,10 +50,9 @@ export function DayStrip({
     <>
       <div className="headline-days">
         {[tonight, tomorrow].filter(Boolean).map((day, i) => (
-          <button
+          <div
             key={day.date}
             className={`headline-day${day.date === todayKey ? ' is-today' : ''}`}
-            onClick={() => onPick(day.date)}
             style={{ animationDelay: `${0.2 + i * 0.08}s` }}
           >
             <Avatar
@@ -63,18 +64,14 @@ export function DayStrip({
             <span className="tag">{dayLabel(day.date, todayKey)}</span>
             <span className="headline-name">{nameOf(day.assignee)}</span>
             {flags(day)}
-          </button>
+          </div>
         ))}
       </div>
 
       <ul className="strip">
         {rest.map((day, i) => (
           <li key={day.date}>
-            <button
-              className="strip-day"
-              onClick={() => onPick(day.date)}
-              style={{ animationDelay: `${0.36 + i * 0.04}s` }}
-            >
+            <div className="strip-day" style={{ animationDelay: `${0.36 + i * 0.04}s` }}>
               <span className="strip-when tag">{dayLabel(day.date, todayKey)}</span>
               <span className="strip-who">
                 <Avatar
@@ -86,7 +83,7 @@ export function DayStrip({
                 {nameOf(day.assignee)}
               </span>
               {flags(day)}
-            </button>
+            </div>
           </li>
         ))}
       </ul>
