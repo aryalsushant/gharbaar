@@ -310,28 +310,6 @@ export function useSyncRotationMembers(respId: string | undefined) {
   });
 }
 
-/**
- * The last resort, when the order itself is wrong rather than incomplete.
- * Members, swaps and sign-offs go with it by cascade.
- *
- * Fines deliberately survive: penalties.responsibility_id is ON DELETE SET NULL,
- * so money already owed to the house stays owed. Restarting the rota is not a
- * way to clear your debts.
- */
-export function useResetRotation() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (respId: string) => {
-      const { error } = await supabase.from('responsibilities').delete().eq('id', respId);
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['responsibilities'] });
-      qc.invalidateQueries({ queryKey: ['penalties'] });
-    },
-  });
-}
-
 export function useRotationMembers(respId: string | undefined) {
   return useQuery({
     queryKey: ['rotation-members', respId],
@@ -452,18 +430,64 @@ export function useApplySwap(respId: string | undefined) {
   });
 }
 
-export function useClearOverride(respId: string | undefined) {
+// --- swap requests ----------------------------------------------------------
+
+export type SwapRequest = {
+  id: string;
+  date: string;
+  requested_by: string;
+  note: string;
+  created_at: string;
+};
+
+export function useSwapRequests(respId: string | undefined) {
+  return useQuery({
+    queryKey: ['swap-requests', respId],
+    queryFn: async () =>
+      unwrap(
+        await supabase
+          .from('swap_requests')
+          .select('id, date, requested_by, note, created_at')
+          .eq('responsibility_id', respId!)
+          .order('date')
+      ) as SwapRequest[],
+    enabled: !!respId,
+  });
+}
+
+/** "I cannot cook that night." Upserts, so asking twice is not two asks. */
+export function useRequestSwap(respId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (date: string) => {
+    mutationFn: async ({
+      date,
+      requestedBy,
+      note,
+    }: {
+      date: string;
+      requestedBy: string;
+      note: string;
+    }) => {
       const { error } = await supabase
-        .from('responsibility_overrides')
-        .delete()
-        .eq('responsibility_id', respId!)
-        .eq('date', date);
+        .from('swap_requests')
+        .upsert(
+          { responsibility_id: respId, date, requested_by: requestedBy, note },
+          { onConflict: 'responsibility_id,date' }
+        );
       if (error) throw new Error(error.message);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['overrides', respId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['swap-requests', respId] }),
+  });
+}
+
+export function useCloseSwapRequest(respId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('swap_requests').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['swap-requests', respId] }),
   });
 }
 
