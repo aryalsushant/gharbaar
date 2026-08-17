@@ -50,3 +50,6 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Playwright MCP scratch output
+.playwright-mcp/
