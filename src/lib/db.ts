@@ -269,7 +269,49 @@ export function useCreateResponsibility() {
 }
 
 /**
- * Tear the rotation down so it can be opened again with the right people in it.
+ * Bring the rotation in line with the house without destroying anything.
+ *
+ * This is what people actually want when they reach for "restart": the rota was
+ * opened before everyone had claimed a seat, and the missing housemates need to
+ * be in it. Adding them is not a reason to lose the swaps and sign-offs that
+ * have already happened.
+ *
+ * Existing members keep their rotation_order, so nobody who has already cooked
+ * gets moved back to the front. New people are appended in roster order.
+ */
+export function useSyncRotationMembers(respId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (orderedUserIds: string[]) => {
+      const existing = unwrap(
+        await supabase
+          .from('responsibility_members')
+          .select('user_id, rotation_order')
+          .eq('responsibility_id', respId!)
+      ) as { user_id: string; rotation_order: number }[];
+
+      const known = new Set(existing.map((m) => m.user_id));
+      const missing = orderedUserIds.filter((id) => !known.has(id));
+      if (missing.length === 0) return 0;
+
+      const nextOrder = existing.reduce((max, m) => Math.max(max, m.rotation_order), -1) + 1;
+
+      const { error } = await supabase.from('responsibility_members').insert(
+        missing.map((userId, i) => ({
+          responsibility_id: respId,
+          user_id: userId,
+          rotation_order: nextOrder + i,
+        }))
+      );
+      if (error) throw new Error(error.message);
+      return missing.length;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['rotation-members', respId] }),
+  });
+}
+
+/**
+ * The last resort, when the order itself is wrong rather than incomplete.
  * Members, swaps and sign-offs go with it by cascade.
  *
  * Fines deliberately survive: penalties.responsibility_id is ON DELETE SET NULL,

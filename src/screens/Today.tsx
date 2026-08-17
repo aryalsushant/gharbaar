@@ -17,6 +17,7 @@ import {
   useResetRotation,
   useResponsibilities,
   useRotationMembers,
+  useSyncRotationMembers,
   useRoster,
   useOverrides,
 } from '../lib/db';
@@ -43,6 +44,7 @@ export function Today() {
   const clearOverride = useClearOverride(duty?.id);
   const fine = useIssuePenalty();
   const resetRotation = useResetRotation();
+  const syncMembers = useSyncRotationMembers(duty?.id);
 
   const [picked, setPicked] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -152,6 +154,14 @@ export function Today() {
 
   const pickedDay = picked ? days.find((d) => d.date === picked) : null;
 
+  // Roster order, so anyone added lands in the same sequence as the seats.
+  const houseInOrder = (roster.data ?? [])
+    .map((seat) => house.data?.find((p) => p.roster_key === seat.key))
+    .filter((p): p is NonNullable<typeof p> => !!p);
+
+  const inRotation = new Set((members.data ?? []).map((m) => m.user_id));
+  const missing = houseInOrder.filter((person) => !inRotation.has(person.id));
+
   return (
     <div className="centered wide">
       <Nav />
@@ -221,6 +231,29 @@ export function Today() {
           </>
         )}
       </section>
+
+      {missing.length > 0 && (
+        <section className="panel stack-lg rise rise-3">
+          <p className="tag">Not in the rotation yet</p>
+          <p className="lede" style={{ maxWidth: 'none' }}>
+            {missing.map((p) => p.display_name).join(', ')}{' '}
+            {missing.length === 1 ? 'has' : 'have'} taken a seat but{' '}
+            {missing.length === 1 ? 'is' : 'are'} not cooking. Adding{' '}
+            {missing.length === 1 ? 'them' : 'them'} keeps every swap and sign-off already
+            made.
+          </p>
+          <button
+            className="btn"
+            style={{ marginTop: 14 }}
+            disabled={syncMembers.isPending}
+            onClick={() => run(() => syncMembers.mutateAsync(houseInOrder.map((p) => p.id)))}
+          >
+            {syncMembers.isPending
+              ? 'Adding'
+              : `Add ${missing.length === 1 ? missing[0].display_name : `all ${missing.length}`} to the rotation`}
+          </button>
+        </section>
+      )}
 
       <section className="stack-lg rise rise-3">
         <p className="tag">The fortnight</p>
@@ -297,7 +330,8 @@ export function Today() {
         {confirmingReset ? (
           <>
             <span className="tag">
-              Wipes the order, the swaps and every sign-off. Fines stay owed.
+              Last resort. Wipes the order, the swaps and every sign-off. Fines stay owed,
+              and anyone in the house can do this.
             </span>
             <button
               className="link link-danger"
