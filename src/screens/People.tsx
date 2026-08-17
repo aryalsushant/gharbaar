@@ -5,7 +5,15 @@ import { Avatar } from '../components/Avatar';
 import { Nav } from '../components/Nav';
 import { computeBalances, formatMoney } from '../lib/balances';
 import { APARTMENTS } from '../lib/categories';
-import { useExpenses, useHousehold, useSplits } from '../lib/db';
+import {
+  useCompletions,
+  useExpenses,
+  useHousehold,
+  useResponsibilities,
+  useRoster,
+  useSplits,
+} from '../lib/db';
+import { fairnessNote, standings } from '../lib/fairness';
 
 export function People() {
   const house = useHousehold();
@@ -14,11 +22,23 @@ export function People() {
 
   const [flat, setFlat] = useState<string | null>(null);
 
+  const roster = useRoster();
+  const responsibilities = useResponsibilities();
+  const completions = useCompletions(responsibilities.data?.[0]?.id);
+
   const memberIds = useMemo(() => (house.data ?? []).map((p) => p.id), [house.data]);
 
   // Balances always cover the whole house. Filtering is about who you are
   // looking at, not about recalculating what they owe.
   const shown = (house.data ?? []).filter((p) => !flat || p.apartment === flat);
+
+  /**
+   * Counting before everybody has a seat compares people who have been cooking
+   * for a week against people who have not arrived, which is not unfairness, it
+   * is arithmetic. So it stays hidden until the house is complete.
+   */
+  const everybodyIn = (house.data?.length ?? 0) >= (roster.data?.length ?? 6);
+  const { byPerson } = standings(completions.data ?? [], memberIds);
 
   const balances = useMemo(
     () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds, []),
@@ -82,6 +102,9 @@ export function People() {
               >
                 {net > 0.004 ? `owed ${formatMoney(net)}` : net < -0.004 ? `owes ${formatMoney(net)}` : 'square'}
               </span>
+              {everybodyIn && fairnessNote(byPerson.get(person.id)) && (
+                <span className="flag flag-swap">{fairnessNote(byPerson.get(person.id))}</span>
+              )}
             </Link>
           );
         })}

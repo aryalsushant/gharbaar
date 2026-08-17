@@ -6,12 +6,14 @@ import { Nav } from '../components/Nav';
 import { useAuth } from '../lib/auth';
 import { computeBalances, formatMoney, settleUp } from '../lib/balances';
 import { mediumDate } from '../lib/dates';
+import { fairnessNote, standings } from '../lib/fairness';
 import {
   useCompletions,
   useExpenses,
   useHousehold,
   useRecordSettlement,
   useResponsibilities,
+  useRoster,
   useSettlements,
   useSplits,
 } from '../lib/db';
@@ -31,6 +33,7 @@ export function Person() {
   const expenses = useExpenses();
   const splits = useSplits();
   const responsibilities = useResponsibilities();
+  const roster = useRoster();
   const completions = useCompletions(responsibilities.data?.[0]?.id);
   const settlements = useSettlements();
   const record = useRecordSettlement();
@@ -71,6 +74,10 @@ export function Person() {
   const cooked = (completions.data ?? []).filter((c) => c.user_id === id);
   const signedOff = (completions.data ?? []).filter((c) => c.marked_by === id);
   const paidExpenses = (expenses.data ?? []).filter((e) => e.paid_by === id);
+
+  const everybodyIn = (house.data?.length ?? 0) >= (roster.data?.length ?? 6);
+  const { byPerson } = standings(completions.data ?? [], memberIds);
+  const note = fairnessNote(byPerson.get(id));
 
   const activity = useMemo<Entry[]>(() => {
     const entries: Entry[] = [
@@ -211,7 +218,10 @@ export function Person() {
       <section className="stat-row stack-lg rise rise-3">
         <div className="stat">
           <span className="figure stat-value">{cooked.length}</span>
-          <span className="tag">nights cooked</span>
+          <span className="tag">
+            nights cooked
+            {everybodyIn && note ? ` · ${note}` : ''}
+          </span>
         </div>
         <div className="stat">
           <span className="figure stat-value">{paidExpenses.length}</span>
