@@ -3,7 +3,9 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { Water } from './components/Water';
 import { useAuth } from './lib/auth';
 import { useProfile } from './lib/db';
+import { AddExpense } from './screens/AddExpense';
 import { ClaimSeat } from './screens/ClaimSeat';
+import { Money } from './screens/Money';
 import { SignIn } from './screens/SignIn';
 import { SignUp } from './screens/SignUp';
 import { Today } from './screens/Today';
@@ -46,6 +48,8 @@ export default function App() {
         ) : (
           <Routes>
             <Route path="/today" element={<Today />} />
+            <Route path="/money" element={<Money />} />
+            <Route path="/money/add" element={<AddExpense />} />
             <Route path="*" element={<Navigate to="/today" replace />} />
           </Routes>
         )}

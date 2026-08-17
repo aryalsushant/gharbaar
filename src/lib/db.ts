@@ -268,6 +268,28 @@ export function useCreateResponsibility() {
   });
 }
 
+/**
+ * Tear the rotation down so it can be opened again with the right people in it.
+ * Members, swaps and sign-offs go with it by cascade.
+ *
+ * Fines deliberately survive: penalties.responsibility_id is ON DELETE SET NULL,
+ * so money already owed to the house stays owed. Restarting the rota is not a
+ * way to clear your debts.
+ */
+export function useResetRotation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (respId: string) => {
+      const { error } = await supabase.from('responsibilities').delete().eq('id', respId);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['responsibilities'] });
+      qc.invalidateQueries({ queryKey: ['penalties'] });
+    },
+  });
+}
+
 export function useRotationMembers(respId: string | undefined) {
   return useQuery({
     queryKey: ['rotation-members', respId],
@@ -359,6 +381,27 @@ export function useSetOverride(respId: string | undefined) {
         .from('responsibility_overrides')
         .upsert(
           { responsibility_id: respId, date, user_id: userId },
+          { onConflict: 'responsibility_id,date' }
+        );
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['overrides', respId] }),
+  });
+}
+
+/**
+ * Both halves of a swap in one upsert. Writing them as two separate mutations
+ * would let the first land and the second fail, which leaves one person cooking
+ * twice and the other not at all.
+ */
+export function useApplySwap(respId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: { date: string; user_id: string }[]) => {
+      const { error } = await supabase
+        .from('responsibility_overrides')
+        .upsert(
+          rows.map((row) => ({ ...row, responsibility_id: respId })),
           { onConflict: 'responsibility_id,date' }
         );
       if (error) throw new Error(error.message);

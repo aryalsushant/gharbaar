@@ -575,6 +575,349 @@ h2 {
   border-bottom: none;
 }
 
+/* ---------------------------------------------------------------------------
+   The board
+   --------------------------------------------------------------------------- */
+
+.centered.wide {
+  max-width: 34rem;
+}
+
+/* Fines get their own button weight. Charging somebody $10 should not look
+   like the same gesture as saying well done. */
+.btn-danger {
+  color: #2a0d06;
+  background: linear-gradient(150deg, #ffb59d 0%, var(--coral) 55%, #e0603f 100%);
+  box-shadow:
+    0 14px 34px -16px rgba(255, 138, 107, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.birthday {
+  border-radius: var(--bend-sm);
+  border: 1px solid rgba(255, 212, 138, 0.3);
+  background: rgba(255, 212, 138, 0.08);
+  color: var(--amber);
+  padding: 11px 14px;
+  margin-bottom: 18px;
+  font-size: 0.94rem;
+}
+
+.birthday p {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.birthday p + p {
+  margin-top: 5px;
+}
+
+.birthday strong {
+  font-family: var(--display);
+  font-weight: 600;
+}
+
+.birthday-mark {
+  color: var(--amber);
+}
+
+/* --- the fortnight strip --- */
+
+.strip {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.strip-day {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 7.5rem 1fr auto;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  padding: 13px 16px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--hairline);
+  border-radius: var(--bend-sm);
+  animation: surface 0.8s var(--ease-liquid) both;
+  transition:
+    background 0.4s var(--ease-liquid),
+    border-color 0.4s var(--ease-liquid),
+    transform 0.4s var(--ease-liquid);
+}
+
+.strip-day:hover {
+  background: var(--glass-lift);
+  border-color: var(--hairline-bright);
+  transform: translateX(3px);
+}
+
+/* Tonight is the only row that gets the accent, so the eye lands on it before
+   reading anything. */
+.strip-day.is-today {
+  border-color: rgba(99, 230, 200, 0.45);
+  background: rgba(99, 230, 200, 0.07);
+}
+
+.strip-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: -0.015em;
+}
+
+.strip-flags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.flag {
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid;
+}
+
+.flag-swap {
+  color: var(--ink-soft);
+  border-color: var(--hairline-bright);
+}
+
+.flag-done {
+  color: var(--aqua);
+  border-color: rgba(99, 230, 200, 0.4);
+  background: rgba(99, 230, 200, 0.09);
+}
+
+.flag-fined {
+  color: var(--coral);
+  border-color: rgba(255, 138, 107, 0.4);
+  background: rgba(255, 138, 107, 0.09);
+}
+
+.cover-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 9px;
+  margin-top: 10px;
+}
+
+.cover-choices .btn {
+  width: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Faces
+   Photos arrive one at a time as people send them, so every one of these has
+   to look deliberate whether the image is there or not.
+   --------------------------------------------------------------------------- */
+
+.avatar {
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--hairline-bright);
+  background: rgba(2, 10, 17, 0.5);
+}
+
+.avatar-initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.faced {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* The face on the confirm step, big enough to actually recognise somebody,
+   ringed so it reads as a portrait rather than a floating cut-out. */
+.claim-face {
+  margin: 4px 0 14px;
+}
+
+.claim-face .avatar {
+  border-width: 2px;
+  border-color: rgba(99, 230, 200, 0.4);
+  box-shadow: 0 18px 40px -18px var(--aqua-glow);
+}
+
+/* ---------------------------------------------------------------------------
+   Navigation
+   --------------------------------------------------------------------------- */
+
+.nav {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 26px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: rgba(2, 10, 17, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  align-self: flex-start;
+}
+
+.nav-link {
+  font-family: var(--body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  text-decoration: none;
+  padding: 8px 18px;
+  border-radius: 999px;
+  transition:
+    color 0.4s var(--ease-liquid),
+    background 0.4s var(--ease-liquid);
+}
+
+.nav-link.is-on {
+  color: var(--abyss-deep);
+  background: linear-gradient(150deg, #9ff5df, var(--aqua));
+}
+
+.nav-link:not(.is-on):hover {
+  color: var(--ink);
+  background: var(--glass-lift);
+}
+
+/* ---------------------------------------------------------------------------
+   Money
+   --------------------------------------------------------------------------- */
+
+/* The one question the ledger asks first, so it gets the whole width. */
+.ask {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+
+/* Fines sit apart from the shopping, and are coloured so nobody mistakes the
+   two. Netting a punishment against a grocery receipt would hide both. */
+.panel-fines {
+  border-color: rgba(255, 138, 107, 0.28);
+  background: rgba(255, 138, 107, 0.05);
+}
+
+.amount-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.amount-sign {
+  position: absolute;
+  left: 16px;
+  font-size: 1.5rem;
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+
+.amount-input {
+  font-size: 1.9rem;
+  padding-left: 38px;
+  letter-spacing: -0.04em;
+}
+
+/* Strip the browser's spinners. They are ugly and nobody nudges a bill up by
+   one cent at a time. */
+.amount-input::-webkit-outer-spin-button,
+.amount-input::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.amount-input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* A chosen person, in either the paid-by row or the split-between row. */
+.btn-quiet.is-on {
+  color: var(--aqua);
+  border-color: rgba(99, 230, 200, 0.55);
+  background: rgba(99, 230, 200, 0.1);
+}
+
+.expense-row {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr auto;
+  grid-template-areas:
+    'when what amount'
+    'when who  amount';
+  align-items: center;
+  gap: 2px 12px;
+  padding: 13px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--bend-sm);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.expense-row .strip-when {
+  grid-area: when;
+}
+
+.expense-row .strip-who {
+  grid-area: what;
+  font-size: 1rem;
+}
+
+.expense-meta {
+  grid-area: who;
+}
+
+.expense-amount {
+  grid-area: amount;
+  font-size: 1.05rem;
+  color: var(--aqua);
+}
+
+/* Destructive actions live down here in the quietest type on the screen, and
+   ask a second time before doing anything. */
+.footer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 18px;
+  margin-top: 30px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hairline);
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
+.link-danger {
+  color: var(--coral);
+}
+
+.link-danger:hover {
+  border-bottom-color: var(--coral);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
