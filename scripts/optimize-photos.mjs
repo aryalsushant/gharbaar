@@ -2,17 +2,18 @@
  * Normalise the household photos in public/people/.
  *
  * These ship inside the app bundle, so a 4MB photo straight off a phone is 4MB
- * every housemate downloads before they can see who is cooking. This squares
- * them, resizes to 512, and writes a single lowercase .jpg per person.
+ * every housemate downloads before they can see who is cooking. This trims,
+ * squares, resizes to 512 and writes one lowercase .jpg per person.
  *
  * Lowercase matters beyond tidiness: Windows finds suwan.JPG when the app asks
- * for suwan.jpg, and Linux does not, so a photo that works locally would 404
- * for everyone once deployed.
+ * for suwan.jpg and Linux does not, so a photo that works locally would 404 for
+ * everyone once deployed.
  *
- *   node scripts/optimize-photos.mjs
+ *   npm run photos
  *
- * Originals are moved to public/people/originals/ rather than deleted, and that
- * folder is gitignored so it never reaches the bundle.
+ * Safe to run repeatedly. Originals are kept in public/people/originals/ and are
+ * always preferred as the source, so re-running never re-compresses an already
+ * compressed file. That folder is gitignored and never reaches the bundle.
  */
 import { mkdir, readdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -23,43 +24,114 @@ const KEYS = ['suwan', 'prastab', 'sushant', 'serene', 'chetan', 'bipul'];
 const SIZE = 512;
 const DIR = 'public/people';
 const BACKUP = path.join(DIR, 'originals');
+const IMAGE = /\.(jpe?g|png|webp|heic)$/i;
 
-const files = await readdir(DIR, { withFileTypes: true });
+/**
+ * Per-person corrections, because "square crop of the interesting bit" gets two
+ * of these wrong.
+ *
+ *   region: take this horizontal band of the original first, as fractions of
+ *           its height. For screenshots with player bars or status bars that
+ *           trim cannot see as borders.
+ *   zoom:   crop tighter than the square. 1.5 keeps two thirds of the frame,
+ *           for photos taken from across a room.
+ */
+const TWEAKS = {
+  // A phone screenshot with a media bar across the bottom that survived trim.
+  serene: { region: { top: 0.04, height: 0.6 } },
+  // Shot from a distance, so the face lands small in a plain square crop.
+  bipul: { zoom: 1.5 },
+};
+
 await mkdir(BACKUP, { recursive: true });
 
+const find = (files, key) =>
+  files.find(
+    (name) => path.parse(name).name.toLowerCase().replace(/-original$/, '') === key && IMAGE.test(name)
+  );
+
+/**
+ * Phone screenshots arrive letterboxed, and a square crop of one keeps the black
+ * band. Trim it, but only when what is left is still most of the picture: a
+ * photo shot against a plain wall can otherwise be trimmed down to a face and a
+ * shoulder.
+ */
+async function trimmed(input) {
+  const base = sharp(input);
+  const { width, height } = await base.metadata();
+  try {
+    const cut = await sharp(input).trim({ threshold: 12 }).toBuffer({ resolveWithObject: true });
+    const kept = (cut.info.width * cut.info.height) / (width * height);
+    if (kept > 0.35) return cut.data;
+  } catch {
+    // Trim throws when the whole image is one colour. Nothing to do about that.
+  }
+  return input;
+}
+
+const backups = await readdir(BACKUP).catch(() => []);
 let changed = 0;
 
 for (const key of KEYS) {
-  const source = files.find(
-    (file) =>
-      file.isFile() &&
-      path.parse(file.name).name.toLowerCase() === key &&
-      /\.(jpe?g|png|webp|heic)$/i.test(file.name)
-  );
+  const current = await readdir(DIR);
+  const fromBackup = find(backups, key);
+  const source = fromBackup
+    ? path.join(BACKUP, fromBackup)
+    : find(current, key)
+      ? path.join(DIR, find(current, key))
+      : null;
 
   if (!source) {
     console.log(`--   ${key}: no photo yet`);
     continue;
   }
 
-  const from = path.join(DIR, source.name);
   const target = path.join(DIR, `${key}.jpg`);
 
-  // Read fully before writing, since the target can be the source file itself.
-  const optimised = await sharp(from)
-    .rotate() // honour the EXIF orientation phones set, then drop it
-    .resize(SIZE, SIZE, { fit: 'cover', position: 'attention' })
-    .jpeg({ quality: 82, mozjpeg: true })
-    .toBuffer();
+  const tweak = TWEAKS[key] ?? {};
+  let input = await trimmed(source);
 
-  if (source.name !== `${key}.jpg`) {
-    await rename(from, path.join(BACKUP, source.name));
-  } else {
-    await rename(from, path.join(BACKUP, `${key}-original.jpg`));
+  if (tweak.region) {
+    const upright = await sharp(input).rotate().toBuffer();
+    const meta = await sharp(upright).metadata();
+    input = await sharp(upright)
+      .extract({
+        left: 0,
+        top: Math.round(meta.height * tweak.region.top),
+        width: meta.width,
+        height: Math.round(meta.height * tweak.region.height),
+      })
+      .toBuffer();
+  }
+
+  const zoom = tweak.zoom ?? 1;
+  const box = Math.round(SIZE * zoom);
+
+  let pipeline = sharp(input)
+    .rotate() // honour the EXIF orientation phones set, then drop it
+    .resize(box, box, { fit: 'cover', position: 'attention' });
+
+  if (zoom > 1) {
+    // Bias upward: heads sit above the middle of a portrait, so a centred
+    // extract shaves the top of someone's head off.
+    const excess = box - SIZE;
+    pipeline = sharp(await pipeline.toBuffer()).extract({
+      left: Math.round(excess / 2),
+      top: Math.round(excess * 0.3),
+      width: SIZE,
+      height: SIZE,
+    });
+  }
+
+  const optimised = await pipeline.jpeg({ quality: 82, mozjpeg: true }).toBuffer();
+
+  // Keep the untouched original the first time we see one.
+  if (!fromBackup && !source.startsWith(BACKUP)) {
+    await rename(source, path.join(BACKUP, path.basename(source)));
   }
 
   await writeFile(target, optimised);
-  console.log(`ok   ${key}: ${source.name} -> ${key}.jpg`);
+  console.log(`ok   ${key}: ${path.basename(source)} -> ${key}.jpg`);
   changed++;
 }
 
