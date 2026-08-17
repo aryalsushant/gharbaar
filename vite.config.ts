@@ -24,11 +24,11 @@ export default defineConfig({
         display: 'standalone',
         background_color: '#04101a',
         theme_color: '#04101a',
-        icons: [
-          { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-        ],
+        // SVG only for now. Android and desktop install fine from this, but
+        // iOS wants a PNG apple-touch-icon and will screenshot the page
+        // instead if it does not find one, so raster versions are still owed
+        // before the iPhones add this to their home screens.
+        icons: [{ src: '/mark.svg', sizes: 'any', type: 'image/svg+xml' }],
       },
       devOptions: { enabled: false },
     }),
