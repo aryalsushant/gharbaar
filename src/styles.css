@@ -1147,6 +1147,49 @@ h2 {
   color: var(--ink-faint);
 }
 
+/* Chips: categories, apartments, people. One control shape for every "pick
+   from a short list", so the form does not turn into four different widgets. */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  padding: 9px 15px;
+  cursor: pointer;
+  background: rgba(2, 10, 17, 0.36);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  transition:
+    color 0.35s var(--ease-liquid),
+    background 0.35s var(--ease-liquid),
+    border-color 0.35s var(--ease-liquid);
+}
+
+.chip:hover {
+  color: var(--ink);
+  border-color: var(--hairline-bright);
+}
+
+.chip.is-on {
+  color: var(--aqua);
+  background: rgba(99, 230, 200, 0.1);
+  border-color: rgba(99, 230, 200, 0.5);
+}
+
+.chip-face {
+  padding: 6px 14px 6px 6px;
+}
+
 .amount-field {
   position: relative;
   display: flex;
