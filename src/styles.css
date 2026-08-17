@@ -719,6 +719,29 @@ h2 {
   width: auto;
 }
 
+/* Destructive actions live down here in the quietest type on the screen, and
+   ask a second time before doing anything. */
+.footer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 18px;
+  margin-top: 30px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hairline);
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
+.link-danger {
+  color: var(--coral);
+}
+
+.link-danger:hover {
+  border-bottom-color: var(--coral);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

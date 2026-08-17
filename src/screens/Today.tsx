@@ -13,6 +13,7 @@ import {
   useHousehold,
   useIssuePenalty,
   usePenalties,
+  useResetRotation,
   useResponsibilities,
   useRotationMembers,
   useRoster,
@@ -40,9 +41,11 @@ export function Today() {
   const applySwap = useApplySwap(duty?.id);
   const clearOverride = useClearOverride(duty?.id);
   const fine = useIssuePenalty();
+  const resetRotation = useResetRotation();
 
   const [picked, setPicked] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingReset, setConfirmingReset] = useState(false);
 
   const todayKey = toDateKey(new Date());
 
@@ -284,11 +287,40 @@ export function Today() {
         </section>
       )}
 
-      <p className="rise rise-5" style={{ textAlign: 'center', marginTop: 26, color: 'var(--ink-soft)' }}>
-        <button className="link" onClick={() => signOut()}>
-          Sign out
-        </button>
-      </p>
+      <footer className="rise rise-5 footer-row">
+        {confirmingReset ? (
+          <>
+            <span className="tag">
+              Wipes the order, the swaps and every sign-off. Fines stay owed.
+            </span>
+            <button
+              className="link link-danger"
+              disabled={resetRotation.isPending}
+              onClick={() =>
+                run(async () => {
+                  await resetRotation.mutateAsync(duty.id);
+                  setConfirmingReset(false);
+                  setPicked(null);
+                })
+              }
+            >
+              Yes, restart it
+            </button>
+            <button className="link" onClick={() => setConfirmingReset(false)}>
+              Keep it
+            </button>
+          </>
+        ) : (
+          <>
+            <button className="link" onClick={() => setConfirmingReset(true)}>
+              Restart the rotation
+            </button>
+            <button className="link" onClick={() => signOut()}>
+              Sign out
+            </button>
+          </>
+        )}
+      </footer>
     </div>
   );
 }
