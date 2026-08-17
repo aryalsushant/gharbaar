@@ -268,6 +268,28 @@ export function useCreateResponsibility() {
   });
 }
 
+/**
+ * Tear the rotation down so it can be opened again with the right people in it.
+ * Members, swaps and sign-offs go with it by cascade.
+ *
+ * Fines deliberately survive: penalties.responsibility_id is ON DELETE SET NULL,
+ * so money already owed to the house stays owed. Restarting the rota is not a
+ * way to clear your debts.
+ */
+export function useResetRotation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (respId: string) => {
+      const { error } = await supabase.from('responsibilities').delete().eq('id', respId);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['responsibilities'] });
+      qc.invalidateQueries({ queryKey: ['penalties'] });
+    },
+  });
+}
+
 export function useRotationMembers(respId: string | undefined) {
   return useQuery({
     queryKey: ['rotation-members', respId],
