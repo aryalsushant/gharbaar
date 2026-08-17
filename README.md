@@ -43,6 +43,40 @@ Be careful with `config push`. Any key absent from `config.toml` is filled in
 with a CLI default rather than left alone, so it can change settings you never
 touched. Read the diff it prints.
 
+## Putting it online
+
+Housemates cannot use `localhost`, and web push needs HTTPS, so this has to be
+deployed before anyone else can touch it.
+
+```sh
+npx vercel          # first run links the project
+npx vercel --prod
+```
+
+Two things Vercel needs that are not in the repo:
+
+1. `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as environment variables in
+   the project settings. `.env` is gitignored, and the build inlines these, so
+   without them the deployed app throws on load.
+2. Nothing else. The build is static.
+
+Then point Supabase at the new origin, or password resets will send people to
+localhost:
+
+```toml
+# supabase/config.toml
+site_url = "https://your-app.vercel.app"
+additional_redirect_urls = ["https://your-app.vercel.app", "http://localhost:5173"]
+```
+
+```sh
+npx supabase config push
+```
+
+`vercel.json` rewrites unknown paths to `index.html`, which client-side routing
+needs, while leaving real files alone. It also stops `sw.js` being cached, since
+a cached service worker is a phone stuck on an old build forever.
+
 ## The six seats
 
 Signing up creates an account. It does not tell the app who you are. That
