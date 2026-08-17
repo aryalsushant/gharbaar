@@ -56,14 +56,24 @@ export function Today() {
   const seatOf = (id: string | null) => personOf(id)?.roster_key ?? null;
   const photoOf = (id: string | null) => personOf(id)?.avatar_url ?? null;
 
-  // Roster order, always. Nobody gets to reorder the rota.
-  const houseInOrder = useMemo(
+  /**
+   * The cooking order comes from the roster and nothing in the app can change
+   * it. Each person carries their slot number, so somebody claiming a seat next
+   * week still lands where the house agreed rather than on the end.
+   */
+  const slots = useMemo(
     () =>
       (roster.data ?? [])
-        .map((seat) => house.data?.find((p) => p.roster_key === seat.key))
-        .filter((p): p is NonNullable<typeof p> => !!p),
+        .filter((seat) => seat.cook_order !== null)
+        .sort((a, b) => (a.cook_order ?? 0) - (b.cook_order ?? 0))
+        .flatMap((seat) => {
+          const person = house.data?.find((p) => p.roster_key === seat.key);
+          return person ? [{ person, order: seat.cook_order as number }] : [];
+        }),
     [roster.data, house.data]
   );
+
+  const houseInOrder = useMemo(() => slots.map((s) => s.person), [slots]);
 
   /**
    * Anyone holding a seat belongs in the rotation, so this happens by itself
@@ -77,8 +87,8 @@ export function Today() {
     if (syncMembers.isPending) return;
     const known = new Set(members.data.map((m) => m.user_id));
     if (houseInOrder.every((person) => known.has(person.id))) return;
-    syncMembers.mutate(houseInOrder.map((p) => p.id));
-  }, [duty, members.data, houseInOrder, syncMembers]);
+    syncMembers.mutate(slots.map((s) => ({ userId: s.person.id, order: s.order })));
+  }, [duty, members.data, houseInOrder, slots, syncMembers]);
 
   /**
    * Open the rota the first time anybody looks at the board, rather than making
@@ -96,16 +106,24 @@ export function Today() {
       {
         name: 'Dinner',
         startDate: todayKey,
-        memberIds: houseInOrder.map((p) => p.id),
+        slots: slots.map((s) => ({ userId: s.person.id, order: s.order })),
       },
       { onError: () => void responsibilities.refetch() }
     );
-  }, [responsibilities, duty, houseInOrder, everybodyIn, createDuty, todayKey]);
+  }, [responsibilities, duty, slots, everybodyIn, createDuty, todayKey]);
+
+  /**
+   * Never show days before the rota begins. getAssignee happily answers for
+   * them, since the modulo works backwards, but a cook for last Tuesday when
+   * the rotation starts next Monday is an answer to a question nobody asked.
+   */
+  const startsLater = !!duty && duty.rotation_start_date > todayKey;
+  const from = startsLater ? duty!.rotation_start_date : todayKey;
 
   const days = useMemo(() => {
     if (!duty || !members.data) return [];
-    return buildStrip(duty, members.data, overrides.data ?? [], todayKey, STRIP_DAYS);
-  }, [duty, members.data, overrides.data, todayKey]);
+    return buildStrip(duty, members.data, overrides.data ?? [], from, STRIP_DAYS);
+  }, [duty, members.data, overrides.data, from]);
 
   const tonight = days[0];
   const completionFor = (date: string) => completions.data?.find((c) => c.date === date);
@@ -221,12 +239,26 @@ export function Today() {
 
       <header className="rise rise-1">
         <p className="tag">{longDate(todayKey)}</p>
-        <h1 className="wordmark">
-          {iAmCooking ? 'You cook tonight' : `${nameOf(tonight?.assignee ?? null)} cooks tonight`}
-        </h1>
-        <p className="lede">Whoever cooks also cleans. Someone else signs it off.</p>
+        {startsLater ? (
+          <>
+            <h1 className="wordmark">Starts {longDate(duty.rotation_start_date)}</h1>
+            <p className="lede">
+              Nobody is cooking until then. Here is the order once it begins.
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="wordmark">
+              {iAmCooking ? 'You cook tonight' : `${nameOf(tonight?.assignee ?? null)} cooks tonight`}
+            </h1>
+            <p className="lede">Whoever cooks also cleans. Someone else signs it off.</p>
+          </>
+        )}
       </header>
 
+      {error && startsLater && <p className="notice notice-bad rise rise-2">{error}</p>}
+
+      {!startsLater && (
       <section className="panel stack-lg rise rise-2">
         {error && <p className="notice notice-bad">{error}</p>}
         {tonightDone ? (
@@ -286,6 +318,7 @@ export function Today() {
           </>
         )}
       </section>
+      )}
 
       {/* Whoever is asking for cover, and the one tap that answers them. */}
       {openRequests.length > 0 && (
@@ -334,7 +367,7 @@ export function Today() {
       )}
 
       <section className="stack-lg rise rise-3">
-        <p className="tag">This week</p>
+        <p className="tag">{startsLater ? 'The first week' : 'This week'}</p>
         <DayStrip
           days={days}
           todayKey={todayKey}

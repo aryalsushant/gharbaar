@@ -16,6 +16,8 @@ export type RosterEntry = {
   key: string;
   display_name: string;
   sort_order: number;
+  /** Position in the dinner rotation, fixed regardless of when they join. */
+  cook_order: number | null;
   claimed: boolean;
   /** Masked, like b****@gmail.com. Null when the seat is not bound yet. */
   email_hint: string | null;
@@ -485,11 +487,11 @@ export function useCreateResponsibility() {
     mutationFn: async ({
       name,
       startDate,
-      memberIds,
+      slots,
     }: {
       name: string;
       startDate: string;
-      memberIds: string[];
+      slots: { userId: string; order: number }[];
     }) => {
       const responsibility = unwrap(
         await supabase
@@ -500,10 +502,10 @@ export function useCreateResponsibility() {
       ) as { id: string };
 
       const { error } = await supabase.from('responsibility_members').insert(
-        memberIds.map((userId, i) => ({
+        slots.map((slot) => ({
           responsibility_id: responsibility.id,
-          user_id: userId,
-          rotation_order: i,
+          user_id: slot.userId,
+          rotation_order: slot.order,
         }))
       );
       if (error) throw new Error(error.message);
@@ -516,36 +518,33 @@ export function useCreateResponsibility() {
 /**
  * Bring the rotation in line with the house without destroying anything.
  *
- * This is what people actually want when they reach for "restart": the rota was
- * opened before everyone had claimed a seat, and the missing housemates need to
- * be in it. Adding them is not a reason to lose the swaps and sign-offs that
- * have already happened.
+ * Somebody claiming a seat after the rota opened belongs in the slot the house
+ * agreed, not on the end of the queue. Appending was fine while everyone
+ * arrived before it started and wrong the moment they did not: the last two to
+ * sign up would have cooked last forever.
  *
- * Existing members keep their rotation_order, so nobody who has already cooked
- * gets moved back to the front. New people are appended in roster order.
+ * Existing members are left alone, so nobody who has already cooked is moved.
  */
 export function useSyncRotationMembers(respId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (orderedUserIds: string[]) => {
+    mutationFn: async (slots: { userId: string; order: number }[]) => {
       const existing = unwrap(
         await supabase
           .from('responsibility_members')
-          .select('user_id, rotation_order')
+          .select('user_id')
           .eq('responsibility_id', respId!)
-      ) as { user_id: string; rotation_order: number }[];
+      ) as { user_id: string }[];
 
       const known = new Set(existing.map((m) => m.user_id));
-      const missing = orderedUserIds.filter((id) => !known.has(id));
+      const missing = slots.filter((slot) => !known.has(slot.userId));
       if (missing.length === 0) return 0;
 
-      const nextOrder = existing.reduce((max, m) => Math.max(max, m.rotation_order), -1) + 1;
-
       const { error } = await supabase.from('responsibility_members').insert(
-        missing.map((userId, i) => ({
+        missing.map((slot) => ({
           responsibility_id: respId,
-          user_id: userId,
-          rotation_order: nextOrder + i,
+          user_id: slot.userId,
+          rotation_order: slot.order,
         }))
       );
       if (error) throw new Error(error.message);
