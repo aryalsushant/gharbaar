@@ -83,6 +83,25 @@ export function Today() {
     syncMembers.mutate(houseInOrder.map((p) => p.id));
   }, [duty, members.data, houseInOrder, syncMembers]);
 
+  /**
+   * Open the rota the first time anybody looks at the board, rather than making
+   * one person press a button. Six phones can reach this at once, so the unique
+   * index on responsibilities.name decides it: the losers fail and re-read
+   * rather than creating a second Dinner.
+   */
+  useEffect(() => {
+    if (responsibilities.isLoading || duty) return;
+    if (houseInOrder.length === 0 || createDuty.isPending) return;
+    createDuty.mutate(
+      {
+        name: 'Dinner',
+        startDate: todayKey,
+        memberIds: houseInOrder.map((p) => p.id),
+      },
+      { onError: () => void responsibilities.refetch() }
+    );
+  }, [responsibilities, duty, houseInOrder, createDuty, todayKey]);
+
   const days = useMemo(() => {
     if (!duty || !members.data) return [];
     return buildStrip(duty, members.data, overrides.data ?? [], todayKey, STRIP_DAYS);
@@ -126,57 +145,10 @@ export function Today() {
     );
   }
 
-  // --- first run -----------------------------------------------------------
-
   if (!duty) {
     return (
       <div className="centered">
-        <header className="rise rise-1">
-          <p className="tag">First run</p>
-          <h1 className="wordmark">Start the rotation</h1>
-          <p className="lede">
-            One person cooks and cleans each night, in roster order, starting today. Anyone
-            who takes a seat later joins the end of the order on their own.
-          </p>
-        </header>
-
-        <section className="panel stack-lg rise rise-2">
-          {error && <p className="notice notice-bad">{error}</p>}
-
-          <p className="tag">The order</p>
-          <ol className="roster-list">
-            {houseInOrder.map((person) => (
-              <li key={person.id}>
-                <span className="faced">
-                  <Avatar
-                    rosterKey={person.roster_key}
-                    name={person.display_name}
-                    url={person.avatar_url}
-                    size={26}
-                  />
-                  {person.display_name}
-                </span>
-              </li>
-            ))}
-          </ol>
-
-          <button
-            className="btn"
-            style={{ marginTop: 18 }}
-            disabled={houseInOrder.length === 0 || createDuty.isPending}
-            onClick={() =>
-              run(() =>
-                createDuty.mutateAsync({
-                  name: 'Dinner',
-                  startDate: todayKey,
-                  memberIds: houseInOrder.map((p) => p.id),
-                })
-              )
-            }
-          >
-            {createDuty.isPending ? 'Setting the rota' : 'Start it today'}
-          </button>
-        </section>
+        <p className="tag rise rise-1">Opening the kitchen</p>
       </div>
     );
   }
