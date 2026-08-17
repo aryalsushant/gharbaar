@@ -1,17 +1,30 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import { Avatar } from '../components/Avatar';
 import { useAuth } from '../lib/auth';
 import { formatMoney, splitEqually, toCents } from '../lib/balances';
 import { APARTMENTS, CATEGORIES, categoryOf } from '../lib/categories';
-import { useAddExpense, useHousehold } from '../lib/db';
+import { useAddExpense, useDeleteExpense, useEditExpense, useExpense, useHousehold } from '../lib/db';
 
+/**
+ * One form, two jobs. Adding and correcting an expense ask exactly the same
+ * questions, and a separate edit screen would be the same fields drifting out
+ * of step with these ones.
+ */
 export function AddExpense() {
   const navigate = useNavigate();
+  const { id } = useParams();
   const { userId } = useAuth();
   const house = useHousehold();
   const addExpense = useAddExpense();
+  const editExpense = useEditExpense();
+  const removeExpense = useDeleteExpense();
+  const existing = useExpense(id);
+
+  const editing = !!id;
+  const [loaded, setLoaded] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const [category, setCategory] = useState('grocery');
   const [apartment, setApartment] = useState<string | null>(null);
@@ -28,6 +41,19 @@ export function AddExpense() {
     setPaidBy((current) => current ?? userId);
   }, [userId]);
 
+  // Fill the form from the row being corrected, once.
+  useEffect(() => {
+    if (!editing || loaded || !existing.data) return;
+    const { expense, sharedBy: shared } = existing.data;
+    setCategory(expense.category ?? 'misc');
+    setApartment(expense.apartment);
+    setAmount(String(expense.amount));
+    setDescription(expense.description);
+    setPaidBy(expense.paid_by);
+    setSharedBy(shared);
+    setLoaded(true);
+  }, [editing, loaded, existing.data]);
+
   /**
    * Who shares this follows from the category, and is recomputed whenever it
    * changes. Leaving a stale selection behind is how a flat's internet bill
@@ -36,6 +62,9 @@ export function AddExpense() {
    */
   useEffect(() => {
     if (everyone.length === 0) return;
+    // While an existing expense is still loading, leave the selection alone or
+    // it overwrites what we are about to read back.
+    if (editing && !loaded) return;
     if (!chosen.perApartment) {
       setSharedBy(everyone.map((p) => p.id));
       setApartment(null);
@@ -44,7 +73,7 @@ export function AddExpense() {
     setSharedBy(
       apartment ? everyone.filter((p) => p.apartment === apartment).map((p) => p.id) : []
     );
-  }, [chosen.perApartment, apartment, everyone]);
+  }, [chosen.perApartment, apartment, everyone, editing, loaded]);
 
   const cents = toCents(Number(amount) || 0);
 
@@ -68,14 +97,26 @@ export function AddExpense() {
     if (!ready) return;
     setError(null);
     try {
-      await addExpense.mutateAsync({
-        amount: Number(amount),
-        description,
-        paidBy: paidBy!,
-        memberIds: sharedBy,
-        category,
-        apartment,
-      });
+      if (editing) {
+        await editExpense.mutateAsync({
+          id: id!,
+          amount: Number(amount),
+          description,
+          paidBy: paidBy!,
+          memberIds: sharedBy,
+          category,
+          apartment,
+        });
+      } else {
+        await addExpense.mutateAsync({
+          amount: Number(amount),
+          description,
+          paidBy: paidBy!,
+          memberIds: sharedBy,
+          category,
+          apartment,
+        });
+      }
       navigate('/money');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save that.');
@@ -85,8 +126,8 @@ export function AddExpense() {
   return (
     <div className="centered wide">
       <header className="rise rise-1">
-        <p className="tag">New expense</p>
-        <h1 className="wordmark">What did it cost?</h1>
+        <p className="tag">{editing ? 'Correcting' : 'New expense'}</p>
+        <h1 className="wordmark">{editing ? 'Fix it' : 'What did it cost?'}</h1>
       </header>
 
       <form className="panel stack-lg rise rise-2" onSubmit={onSubmit}>
@@ -210,8 +251,16 @@ export function AddExpense() {
           </p>
         )}
 
-        <button className="btn" type="submit" disabled={!ready || addExpense.isPending}>
-          {addExpense.isPending ? 'Saving' : 'Add it'}
+        <button
+          className="btn"
+          type="submit"
+          disabled={!ready || addExpense.isPending || editExpense.isPending}
+        >
+          {addExpense.isPending || editExpense.isPending
+            ? 'Saving'
+            : editing
+              ? 'Save changes'
+              : 'Add it'}
         </button>
         <button
           className="btn btn-quiet"
@@ -221,6 +270,43 @@ export function AddExpense() {
         >
           Cancel
         </button>
+
+        {editing && (
+          <div className="footer-row" style={{ marginTop: 18 }}>
+            {confirmingDelete ? (
+              <>
+                <span className="tag">Removing it changes what everyone owes.</span>
+                <button
+                  type="button"
+                  className="link link-danger"
+                  disabled={removeExpense.isPending}
+                  onClick={async () => {
+                    setError(null);
+                    try {
+                      await removeExpense.mutateAsync(id!);
+                      navigate('/money');
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : 'Could not remove it.');
+                    }
+                  }}
+                >
+                  Yes, delete it
+                </button>
+                <button type="button" className="link" onClick={() => setConfirmingDelete(false)}>
+                  Keep it
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="link link-danger"
+                onClick={() => setConfirmingDelete(true)}
+              >
+                Delete this expense
+              </button>
+            )}
+          </div>
+        )}
       </form>
     </div>
   );

@@ -225,6 +225,105 @@ export function useAddExpense() {
   });
 }
 
+export function useExpense(id: string | undefined) {
+  return useQuery({
+    queryKey: ['expense', id],
+    queryFn: async () => {
+      const expense = unwrap(
+        await supabase
+          .from('expenses')
+          .select('id, paid_by, amount, description, category, apartment, items, created_at')
+          .eq('id', id!)
+          .single()
+      ) as Expense;
+      const splits = unwrap(
+        await supabase.from('expense_splits').select('user_id').eq('expense_id', id!)
+      ) as { user_id: string }[];
+      return { expense, sharedBy: splits.map((s) => s.user_id) };
+    },
+    enabled: !!id,
+  });
+}
+
+/**
+ * Change an expense after the fact.
+ *
+ * The splits are replaced wholesale rather than reconciled row by row. Working
+ * out which shares to add, update and remove is fiddly and the answer is always
+ * the same set anyway, and it means a corrected amount can never leave a stale
+ * share behind that quietly unbalances the ledger.
+ */
+export function useEditExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      amount,
+      description,
+      paidBy,
+      memberIds,
+      category,
+      apartment,
+    }: {
+      id: string;
+      amount: number;
+      description: string;
+      paidBy: string;
+      memberIds: string[];
+      category?: string | null;
+      apartment?: string | null;
+    }) => {
+      const { error: updateError } = await supabase
+        .from('expenses')
+        .update({
+          paid_by: paidBy,
+          amount,
+          description: description.trim(),
+          category: category ?? null,
+          apartment: apartment ?? null,
+        })
+        .eq('id', id);
+      if (updateError) throw new Error(updateError.message);
+
+      const { error: clearError } = await supabase
+        .from('expense_splits')
+        .delete()
+        .eq('expense_id', id);
+      if (clearError) throw new Error(clearError.message);
+
+      const shares = splitEqually(toCents(amount), memberIds.length);
+      const { error } = await supabase.from('expense_splits').insert(
+        memberIds.map((userId, i) => ({
+          expense_id: id,
+          user_id: userId,
+          amount_owed: fromCents(shares[i]),
+        }))
+      );
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['splits'] });
+      qc.invalidateQueries({ queryKey: ['expense', variables.id] });
+    },
+  });
+}
+
+export function useDeleteExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // Splits go with it by cascade.
+      const { error } = await supabase.from('expenses').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['splits'] });
+    },
+  });
+}
+
 // --- settling up ------------------------------------------------------------
 
 export type Settlement = {

@@ -51,6 +51,7 @@ export default function App() {
             <Route path="/today" element={<Today />} />
             <Route path="/money" element={<Money />} />
             <Route path="/money/add" element={<AddExpense />} />
+            <Route path="/money/:id/edit" element={<AddExpense />} />
             <Route path="/house" element={<People />} />
             <Route path="/house/:id" element={<Person />} />
             <Route path="*" element={<Navigate to="/today" replace />} />

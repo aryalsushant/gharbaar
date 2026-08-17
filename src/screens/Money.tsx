@@ -6,6 +6,7 @@ import { Nav } from '../components/Nav';
 import { useAuth } from '../lib/auth';
 import { computeBalances, formatMoney, settleUp } from '../lib/balances';
 import { categoryLabel } from '../lib/categories';
+import { mediumDate } from '../lib/dates';
 import {
   useExpenses,
   useHousehold,
@@ -229,7 +230,7 @@ export function Money() {
                     className={`expense-row${open ? ' is-open' : ''}`}
                     onClick={() => setOpened(open ? null : expense.id)}
                   >
-                    <span className="strip-when tag figure">{expense.created_at.slice(5, 10)}</span>
+                    <span className="strip-when tag">{mediumDate(expense.created_at.slice(0, 10))}</span>
                     <span className="strip-who">
                       {expense.description || categoryLabel(expense.category)}
                     </span>
@@ -245,6 +246,7 @@ export function Money() {
                   </button>
 
                   {open && (
+                    <>
                     <ul className="split-detail">
                       {mine.map((share) => (
                         <li key={share.id}>
@@ -261,6 +263,12 @@ export function Money() {
                         </li>
                       ))}
                     </ul>
+                    <div className="split-detail" style={{ paddingTop: 0 }}>
+                      <Link className="link" to={`/money/${expense.id}/edit`}>
+                        Edit or delete this
+                      </Link>
+                    </div>
+                    </>
                   )}
                 </li>
               );
