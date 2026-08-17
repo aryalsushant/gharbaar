@@ -15,17 +15,16 @@ export function ClaimSeat() {
   const claim = useClaimIdentity();
 
   const [picked, setPicked] = useState<string | null>(null);
-  const [dob, setDob] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const chosen = roster.data?.find((r) => r.key === picked);
 
   async function onConfirm(event: FormEvent) {
     event.preventDefault();
-    if (!picked || !dob) return;
+    if (!picked) return;
     setError(null);
     try {
-      await claim.mutateAsync({ key: picked, dateOfBirth: dob });
+      await claim.mutateAsync(picked);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not take that seat.');
       setPicked(null);
@@ -72,22 +71,7 @@ export function ClaimSeat() {
         <form className="panel stack-lg rise rise-2" onSubmit={onConfirm}>
           {error && <p className="notice notice-bad">{error}</p>}
 
-          <label className="field">
-            <span className="tag">Your date of birth</span>
-            <input
-              className="input"
-              type="date"
-              value={dob}
-              max={new Date().toISOString().slice(0, 10)}
-              onChange={(e) => setDob(e.target.value)}
-              required
-            />
-          </label>
-          <p className="tag" style={{ marginTop: -6, marginBottom: 18, letterSpacing: '0.08em' }}>
-            Only used so the house gets a heads up before your birthday.
-          </p>
-
-          <button className="btn" type="submit" disabled={!dob || claim.isPending}>
+          <button className="btn" type="submit" disabled={claim.isPending}>
             {claim.isPending ? 'Taking your seat' : `Yes, I am ${chosen.display_name}`}
           </button>
           <button

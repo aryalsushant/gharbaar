@@ -8,7 +8,6 @@ export type Profile = {
   display_name: string;
   avatar_url: string | null;
   roster_key: string | null;
-  date_of_birth: string | null;
 };
 
 export type RosterEntry = {
@@ -95,11 +94,8 @@ export function useRoster() {
 export function useClaimIdentity() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ key, dateOfBirth }: { key: string; dateOfBirth: string }) => {
-      const { error } = await supabase.rpc('claim_identity', {
-        identity_key: key,
-        dob: dateOfBirth,
-      });
+    mutationFn: async (key: string) => {
+      const { error } = await supabase.rpc('claim_identity', { identity_key: key });
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
@@ -117,7 +113,7 @@ export function useProfile(userId: string | null) {
       unwrap(
         await supabase
           .from('profiles')
-          .select('id, display_name, avatar_url, roster_key, date_of_birth')
+          .select('id, display_name, avatar_url, roster_key')
           .eq('id', userId!)
           .single()
       ) as Profile,
@@ -133,7 +129,7 @@ export function useHousehold() {
       unwrap(
         await supabase
           .from('profiles')
-          .select('id, display_name, avatar_url, roster_key, date_of_birth')
+          .select('id, display_name, avatar_url, roster_key')
           .not('roster_key', 'is', null)
       ) as Profile[],
   });

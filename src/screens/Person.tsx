@@ -115,9 +115,6 @@ export function Person() {
           <h1 className="wordmark" style={{ fontSize: 'clamp(2.2rem, 9vw, 3rem)' }}>
             {person.display_name}
           </h1>
-          {person.date_of_birth && (
-            <p className="tag figure">born {person.date_of_birth}</p>
-          )}
         </div>
       </header>
 

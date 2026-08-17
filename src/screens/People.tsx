@@ -4,9 +4,7 @@ import { Link } from 'react-router-dom';
 import { Avatar } from '../components/Avatar';
 import { Nav } from '../components/Nav';
 import { computeBalances, formatMoney } from '../lib/balances';
-import { birthdaysAround } from '../lib/birthdays';
 import { useExpenses, useHousehold, usePenalties, useSplits } from '../lib/db';
-import { toDateKey } from '../lib/rotation';
 
 export function People() {
   const house = useHousehold();
@@ -14,15 +12,12 @@ export function People() {
   const splits = useSplits();
   const penalties = usePenalties();
 
-  const todayKey = toDateKey(new Date());
   const memberIds = useMemo(() => (house.data ?? []).map((p) => p.id), [house.data]);
 
   const balances = useMemo(
     () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds),
     [expenses.data, splits.data, memberIds]
   );
-
-  const notices = birthdaysAround(house.data ?? [], todayKey);
 
   return (
     <div className="centered wide">
@@ -40,7 +35,6 @@ export function People() {
           const fines = (penalties.data ?? [])
             .filter((p) => p.user_id === person.id)
             .reduce((sum, p) => sum + Number(p.amount), 0);
-          const birthday = notices.find((n) => n.userId === person.id);
 
           return (
             <Link
@@ -68,11 +62,6 @@ export function People() {
               </span>
 
               {fines > 0 && <span className="flag flag-fined">{formatMoney(fines)} fines</span>}
-              {birthday && (
-                <span className="flag flag-birthday">
-                  {birthday.daysAway === 0 ? 'birthday today' : 'birthday tomorrow'}
-                </span>
-              )}
             </Link>
           );
         })}

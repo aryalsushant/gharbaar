@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { Avatar } from '../components/Avatar';
-import { BirthdayBanner } from '../components/BirthdayBanner';
 import { DayStrip } from '../components/DayStrip';
 import { Nav } from '../components/Nav';
 import { useAuth } from '../lib/auth';
-import { birthdaysAround } from '../lib/birthdays';
 import {
   useApplySwap,
   useCloseSwapRequest,
@@ -112,11 +110,6 @@ export function Today() {
   const penaltyFor = (date: string) => penalties.data?.find((p) => p.date === date);
   const requestFor = (date: string) => requests.data?.find((r) => r.date === date);
 
-  const notices = useMemo(
-    () => birthdaysAround(house.data ?? [], todayKey),
-    [house.data, todayKey]
-  );
-
   async function run(action: () => Promise<unknown>) {
     setError(null);
     try {
@@ -166,7 +159,6 @@ export function Today() {
   return (
     <div className="centered wide">
       <Nav />
-      <BirthdayBanner notices={notices} />
 
       <header className="rise rise-1">
         <p className="tag figure">{todayKey}</p>
