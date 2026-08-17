@@ -91,6 +91,18 @@ export function useRoster() {
   });
 }
 
+/** Names only, readable before anybody has signed in. */
+export function usePublicRoster() {
+  return useQuery({
+    queryKey: ['public-roster'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('public_roster');
+      if (error) throw new Error(error.message);
+      return data as { key: string; display_name: string; sort_order: number }[];
+    },
+  });
+}
+
 export function useClaimIdentity() {
   const qc = useQueryClient();
   return useMutation({
