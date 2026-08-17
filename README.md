@@ -5,9 +5,9 @@
 - **Groceries and bills** get logged once and split six ways in integer cents, so
   the shares always add back up to what was actually spent.
 - **Cooking and cleaning** rotate a day at a time. Whoever cooks that night also
-  cleans up, and somebody else confirms it was done. A missed night costs $10.
-- **Fines are kept apart from the shopping.** Money owed to the house is not the
-  same thing as money owed to whoever paid at the till, so the two never mix.
+  cleans up, and somebody else confirms it was done. A missed night is left
+  unconfirmed and nothing else happens: six friends do not need a penalty
+  system, and no rule inside an app can decide whether dinner happened.
 - **Birthdays** announce themselves the day before.
 
 It runs in a browser and installs to a phone home screen as a PWA.
@@ -133,7 +133,8 @@ There is no test suite and no CI, by design. This is the checklist.
 - [ ] Log an expense. Every housemate sees it and the balances move.
 - [ ] Confirm somebody else's duty. Try to confirm your own, and watch the
       database refuse it rather than the button merely being hidden.
-- [ ] Miss a night and take the $10. It lands in the fines column, not the
-      grocery column.
+- [ ] Ask for cover on a night, and have somebody else take it. The two days
+      trade and nobody else moves.
+- [ ] Settle up with someone. Only the person being paid can record it.
 - [ ] Swap a day. The two people trade, and clearing it puts both back.
 - [ ] Install to a home screen and receive a notification there.

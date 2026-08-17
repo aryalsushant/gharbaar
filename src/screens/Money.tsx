@@ -8,7 +8,6 @@ import { computeBalances, formatMoney, settleUp } from '../lib/balances';
 import {
   useExpenses,
   useHousehold,
-  usePenalties,
   useRecordSettlement,
   useSettlements,
   useSplits,
@@ -19,7 +18,6 @@ export function Money() {
   const house = useHousehold();
   const expenses = useExpenses();
   const splits = useSplits();
-  const penalties = usePenalties();
   const settlements = useSettlements();
   const record = useRecordSettlement();
   const [error, setError] = useState<string | null>(null);
@@ -29,44 +27,16 @@ export function Money() {
   const personOf = (id: string) => house.data?.find((p) => p.id === id);
   const nameOf = (id: string) => personOf(id)?.display_name ?? 'Someone';
 
-  const facedName = (id: string) => (
-    <Link className="faced faced-link" to={`/house/${id}`}>
-      <Avatar
-        rosterKey={personOf(id)?.roster_key ?? null}
-        name={nameOf(id)}
-        url={personOf(id)?.avatar_url}
-        size={26}
-      />
-      {nameOf(id)}
-    </Link>
-  );
-
   const memberIds = useMemo(() => (house.data ?? []).map((p) => p.id), [house.data]);
 
   const balances = useMemo(
-    () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds, settlements.data ?? [], penalties.data ?? []),
-    [expenses.data, splits.data, memberIds, settlements.data, penalties.data]
+    () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds, settlements.data ?? []),
+    [expenses.data, splits.data, memberIds, settlements.data]
   );
 
   const transfers = useMemo(() => settleUp(balances), [balances]);
 
-  /**
-   * Totalled per person for display only. The money itself is handled in
-   * computeBalances, which splits each fine among everyone else, so it settles
-   * like any other debt. This panel exists so a bad week stays visible instead
-   * of disappearing into the grocery maths.
-   */
-  const fines = useMemo(() => {
-    const byPerson = new Map<string, number>();
-    for (const penalty of penalties.data ?? []) {
-      byPerson.set(penalty.user_id, (byPerson.get(penalty.user_id) ?? 0) + Number(penalty.amount));
-    }
-    return byPerson;
-  }, [penalties.data]);
-
-  const finesTotal = [...fines.values()].reduce((sum, n) => sum + n, 0);
   const mine = balances.find((b) => b.user_id === userId)?.net ?? 0;
-  const myFines = fines.get(userId ?? '') ?? 0;
 
   const loading = house.isLoading || expenses.isLoading || splits.isLoading;
 
@@ -88,11 +58,6 @@ export function Money() {
           </h1>
         ) : (
           <h1 className="wordmark">All square</h1>
-        )}
-        {myFines > 0 && (
-          <p className="lede" style={{ color: 'var(--coral)', maxWidth: 'none' }}>
-            Plus <span className="figure">{formatMoney(myFines)}</span> in fines to the house.
-          </p>
         )}
       </header>
 
@@ -245,30 +210,6 @@ export function Money() {
             })}
         </div>
       </section>
-
-      {/* Deliberately its own panel, below the groceries, in coral. */}
-      {finesTotal > 0 && (
-        <section className="panel panel-fines stack-lg rise rise-4">
-          <p className="tag">Fines owed to the house</p>
-          <ul className="roster-list">
-            {[...fines.entries()]
-              .sort((a, b) => b[1] - a[1])
-              .map(([personId, amount]) => (
-                <li key={personId}>
-                  {facedName(personId)}
-                  <span className="figure" style={{ color: 'var(--coral)' }}>
-                    {formatMoney(amount)}
-                  </span>
-                </li>
-              ))}
-          </ul>
-          <p className="tag" style={{ marginTop: 12, letterSpacing: '0.08em' }}>
-            Split among everyone else, so a $10 puts $2 in front of each of the other five
-            and settles like any other debt. Listed here separately so a bad week is
-            visible rather than buried in the grocery maths.
-          </p>
-        </section>
-      )}
 
       <section className="stack-lg rise rise-5">
         <p className="tag">Recent</p>

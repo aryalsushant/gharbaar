@@ -9,7 +9,6 @@ type Props = {
   seatOf: (userId: string | null) => string | null;
   photoOf: (userId: string | null) => string | null;
   doneOn: (date: string) => boolean;
-  finedOn: (date: string) => boolean;
   askedOn: (date: string) => boolean;
   onPick: (date: string) => void;
 };
@@ -32,7 +31,6 @@ export function DayStrip({
   seatOf,
   photoOf,
   doneOn,
-  finedOn,
   askedOn,
   onPick,
 }: Props) {
@@ -41,7 +39,6 @@ export function DayStrip({
       {askedOn(day.date) && <span className="flag flag-ask">cover wanted</span>}
       {day.swapped && <span className="flag flag-swap">swapped</span>}
       {doneOn(day.date) && <span className="flag flag-done">done</span>}
-      {finedOn(day.date) && <span className="flag flag-fined">$10</span>}
     </span>
   );
 

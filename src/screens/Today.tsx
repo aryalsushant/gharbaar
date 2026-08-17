@@ -12,9 +12,7 @@ import {
   useConfirmCompletion,
   useCreateResponsibility,
   useHousehold,
-  useIssuePenalty,
   useOverrides,
-  usePenalties,
   useRequestSwap,
   useResponsibilities,
   useRoster,
@@ -39,7 +37,6 @@ export function Today() {
   const overrides = useOverrides(duty?.id);
   const completions = useCompletions(duty?.id);
   const requests = useSwapRequests(duty?.id);
-  const penalties = usePenalties();
 
   const createDuty = useCreateResponsibility();
   const syncMembers = useSyncRotationMembers(duty?.id);
@@ -47,7 +44,6 @@ export function Today() {
   const applySwap = useApplySwap(duty?.id);
   const requestSwap = useRequestSwap(duty?.id);
   const closeRequest = useCloseSwapRequest(duty?.id);
-  const fine = useIssuePenalty();
 
   const [picked, setPicked] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +108,6 @@ export function Today() {
 
   const tonight = days[0];
   const completionFor = (date: string) => completions.data?.find((c) => c.date === date);
-  const penaltyFor = (date: string) => penalties.data?.find((p) => p.date === date);
   const requestFor = (date: string) => requests.data?.find((r) => r.date === date);
 
   async function run(action: () => Promise<unknown>) {
@@ -213,7 +208,6 @@ export function Today() {
   // --- the board -----------------------------------------------------------
 
   const tonightDone = tonight ? completionFor(tonight.date) : undefined;
-  const tonightFined = tonight ? penaltyFor(tonight.date) : undefined;
   const iAmCooking = tonight?.assignee === userId;
 
   const pickedDay = picked ? days.find((d) => d.date === picked) : null;
@@ -237,10 +231,6 @@ export function Today() {
         {tonightDone ? (
           <p className="notice notice-good" style={{ marginBottom: 0 }}>
             Signed off by {nameOf(tonightDone.marked_by)}.
-          </p>
-        ) : tonightFined ? (
-          <p className="notice notice-bad" style={{ marginBottom: 0 }}>
-            Missed. <span className="figure">$10</span> charged by {nameOf(tonightFined.issued_by)}.
           </p>
         ) : iAmCooking ? (
           <>
@@ -273,40 +263,25 @@ export function Today() {
         ) : (
           <>
             <p className="tag">Did {nameOf(tonight?.assignee ?? null)} cook and clean?</p>
-            <div className="row" style={{ marginTop: 12 }}>
-              <button
-                className="btn"
-                disabled={confirm.isPending}
-                onClick={() =>
-                  run(() =>
-                    confirm.mutateAsync({
-                      date: tonight!.date,
-                      assignee: tonight!.assignee!,
-                      markedBy: userId!,
-                    })
-                  )
-                }
-              >
-                Yes, done
-              </button>
-              <button
-                className="btn btn-danger"
-                disabled={fine.isPending}
-                onClick={() =>
-                  run(() =>
-                    fine.mutateAsync({
-                      userId: tonight!.assignee!,
-                      issuedBy: userId!,
-                      responsibilityId: duty.id,
-                      date: tonight!.date,
-                      reason: 'Dinner not done',
-                    })
-                  )
-                }
-              >
-                No, charge $10
-              </button>
-            </div>
+            <button
+              className="btn"
+              style={{ marginTop: 12 }}
+              disabled={confirm.isPending}
+              onClick={() =>
+                run(() =>
+                  confirm.mutateAsync({
+                    date: tonight!.date,
+                    assignee: tonight!.assignee!,
+                    markedBy: userId!,
+                  })
+                )
+              }
+            >
+              Yes, done
+            </button>
+            <p className="tag" style={{ marginTop: 12, letterSpacing: '0.08em' }}>
+              If they did not, leave it. Nothing is charged and nothing is recorded.
+            </p>
           </>
         )}
       </section>
@@ -367,7 +342,6 @@ export function Today() {
           photoOf={photoOf}
           askedOn={(date) => !!requestFor(date)}
           doneOn={(date) => !!completionFor(date)}
-          finedOn={(date) => !!penaltyFor(date)}
           onPick={(date) => setPicked(date === picked ? null : date)}
         />
       </section>

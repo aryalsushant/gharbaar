@@ -38,8 +38,9 @@ profile row and nothing else, so every other screen would render empty.
 
 `profiles` mirrors `auth.users` and carries `roster_key` and `date_of_birth`.
 `expenses` has `expense_splits`, one row per person per expense. `responsibilities`
-has `responsibility_members` (rotation order), `responsibility_overrides` (swaps) and
-`responsibility_completions` (confirmations). `penalties` is its own ledger.
+has `responsibility_members` (rotation order), `responsibility_overrides` (swaps),
+`responsibility_completions` (confirmations) and `swap_requests` (asking for
+cover). `settlements` records money actually handed over.
 `push_subscriptions` holds one row per browser that granted permission.
 
 ## Rotation algorithm
@@ -67,7 +68,7 @@ so the planner evaluates it once per query.
 
 Two rules are enforced in policies rather than in the UI, so calling the API directly
 does not get around them: a completion's `marked_by` may not equal the assignee, and a
-penalty's `issued_by` may not equal the person being fined.
+settlement can only be recorded by the person who received the money.
 
 ## Money
 
@@ -75,8 +76,9 @@ All split math is in integer cents (`src/lib/balances.ts`). Floating point split
 not sum back to the total and the error compounds. `splitEqually` gives the leftover
 pennies to the earliest shares.
 
-Fines never enter the split math. A fine is owed to the house rather than to whoever
-paid, so it lives in `penalties` and is reported separately.
+There are no fines. A $10 penalty existed briefly and was removed: every rule for who
+could issue one had a hole, and a house of friends settles a missed night by talking
+rather than by policy.
 
 ## Notifications
 

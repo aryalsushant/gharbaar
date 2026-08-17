@@ -9,7 +9,6 @@ import {
   useCompletions,
   useExpenses,
   useHousehold,
-  usePenalties,
   useRecordSettlement,
   useResponsibilities,
   useSettlements,
@@ -18,7 +17,7 @@ import {
 
 type Entry = {
   date: string;
-  kind: 'paid' | 'cooked' | 'signed' | 'fined' | 'settled';
+  kind: 'paid' | 'cooked' | 'signed' | 'settled';
   text: string;
   amount?: number;
 };
@@ -30,7 +29,6 @@ export function Person() {
   const house = useHousehold();
   const expenses = useExpenses();
   const splits = useSplits();
-  const penalties = usePenalties();
   const responsibilities = useResponsibilities();
   const completions = useCompletions(responsibilities.data?.[0]?.id);
   const settlements = useSettlements();
@@ -44,8 +42,8 @@ export function Person() {
 
   const memberIds = useMemo(() => (house.data ?? []).map((p) => p.id), [house.data]);
   const balances = useMemo(
-    () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds, settlements.data ?? [], penalties.data ?? []),
-    [expenses.data, splits.data, memberIds, settlements.data, penalties.data]
+    () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds, settlements.data ?? []),
+    [expenses.data, splits.data, memberIds, settlements.data]
   );
 
   const net = balances.find((b) => b.user_id === id)?.net ?? 0;
@@ -69,8 +67,6 @@ export function Person() {
     );
   }, [balances, id, userId, isMe]);
 
-  const fines = (penalties.data ?? []).filter((p) => p.user_id === id);
-  const finesTotal = fines.reduce((sum, p) => sum + Number(p.amount), 0);
   const cooked = (completions.data ?? []).filter((c) => c.user_id === id);
   const signedOff = (completions.data ?? []).filter((c) => c.marked_by === id);
   const paidExpenses = (expenses.data ?? []).filter((e) => e.paid_by === id);
@@ -89,12 +85,6 @@ export function Person() {
         kind: 'signed' as const,
         text: `Signed off ${nameOf(c.user_id)}`,
       })),
-      ...fines.map((p) => ({
-        date: p.date,
-        kind: 'fined' as const,
-        text: p.reason || 'Missed a night',
-        amount: Number(p.amount),
-      })),
       ...(settlements.data ?? [])
         .filter((s) => s.from_user === id || s.to_user === id)
         .map((s) => ({
@@ -105,7 +95,7 @@ export function Person() {
         })),
     ];
     return entries.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 25);
-  }, [paidExpenses, cooked, signedOff, fines, settlements.data, house.data]);
+  }, [paidExpenses, cooked, signedOff, settlements.data, house.data]);
 
   if (!person) {
     return (
@@ -230,15 +220,6 @@ export function Person() {
           <span className="figure stat-value">{signedOff.length}</span>
           <span className="tag">sign-offs given</span>
         </div>
-        <div className="stat">
-          <span
-            className="figure stat-value"
-            style={{ color: finesTotal > 0 ? 'var(--coral)' : undefined }}
-          >
-            {formatMoney(finesTotal)}
-          </span>
-          <span className="tag">in fines</span>
-        </div>
       </section>
 
       <section className="stack-lg rise rise-4">
@@ -256,7 +237,6 @@ export function Person() {
                   {entry.amount !== undefined && (
                     <span
                       className="figure expense-amount"
-                      style={{ color: entry.kind === 'fined' ? 'var(--coral)' : undefined }}
                     >
                       {formatMoney(entry.amount)}
                     </span>

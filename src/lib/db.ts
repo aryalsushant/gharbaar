@@ -60,17 +60,6 @@ export type ResponsibilityCompletion = {
   marked_by: string | null;
 };
 
-export type Penalty = {
-  id: string;
-  user_id: string;
-  issued_by: string;
-  responsibility_id: string | null;
-  date: string;
-  amount: number;
-  reason: string;
-  created_at: string;
-};
-
 /** Every Supabase call funnels through here so one error shape reaches the UI. */
 function unwrap<T>({ data, error }: { data: T | null; error: { message: string } | null }): T {
   if (error) throw new Error(error.message);
@@ -561,63 +550,5 @@ export function useCloseSwapRequest(respId: string | undefined) {
       if (error) throw new Error(error.message);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['swap-requests', respId] }),
-  });
-}
-
-// --- penalties --------------------------------------------------------------
-
-export function usePenalties() {
-  return useQuery({
-    queryKey: ['penalties'],
-    queryFn: async () =>
-      unwrap(
-        await supabase
-          .from('penalties')
-          .select('id, user_id, issued_by, responsibility_id, date, amount, reason, created_at')
-          .order('date', { ascending: false })
-      ) as Penalty[],
-  });
-}
-
-export function useIssuePenalty() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      userId,
-      issuedBy,
-      responsibilityId,
-      date,
-      reason,
-      amount = 10,
-    }: {
-      userId: string;
-      issuedBy: string;
-      responsibilityId: string | null;
-      date: string;
-      reason: string;
-      amount?: number;
-    }) => {
-      const { error } = await supabase.from('penalties').insert({
-        user_id: userId,
-        issued_by: issuedBy,
-        responsibility_id: responsibilityId,
-        date,
-        amount,
-        reason,
-      });
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['penalties'] }),
-  });
-}
-
-export function useRevokePenalty() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('penalties').delete().eq('id', id);
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['penalties'] }),
   });
 }

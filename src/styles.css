@@ -943,12 +943,6 @@ h2 {
   background: rgba(99, 230, 200, 0.09);
 }
 
-.flag-fined {
-  color: var(--coral);
-  border-color: rgba(255, 138, 107, 0.4);
-  background: rgba(255, 138, 107, 0.09);
-}
-
 .cover-choices {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
@@ -1051,13 +1045,6 @@ h2 {
   display: block;
   text-align: center;
   text-decoration: none;
-}
-
-/* Fines sit apart from the shopping, and are coloured so nobody mistakes the
-   two. Netting a punishment against a grocery receipt would hide both. */
-.panel-fines {
-  border-color: rgba(255, 138, 107, 0.28);
-  background: rgba(255, 138, 107, 0.05);
 }
 
 /* Six digits, spaced out so they read as a code rather than a number. */
