@@ -44,8 +44,8 @@ export function Person() {
 
   const memberIds = useMemo(() => (house.data ?? []).map((p) => p.id), [house.data]);
   const balances = useMemo(
-    () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds, settlements.data ?? []),
-    [expenses.data, splits.data, memberIds, settlements.data]
+    () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds, settlements.data ?? [], penalties.data ?? []),
+    [expenses.data, splits.data, memberIds, settlements.data, penalties.data]
   );
 
   const net = balances.find((b) => b.user_id === id)?.net ?? 0;

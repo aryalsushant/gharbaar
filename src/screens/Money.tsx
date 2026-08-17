@@ -44,17 +44,17 @@ export function Money() {
   const memberIds = useMemo(() => (house.data ?? []).map((p) => p.id), [house.data]);
 
   const balances = useMemo(
-    () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds, settlements.data ?? []),
-    [expenses.data, splits.data, memberIds, settlements.data]
+    () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds, settlements.data ?? [], penalties.data ?? []),
+    [expenses.data, splits.data, memberIds, settlements.data, penalties.data]
   );
 
   const transfers = useMemo(() => settleUp(balances), [balances]);
 
   /**
-   * Fines are totalled apart from the shopping and never enter settleUp(). A
-   * $10 is owed to the house rather than to whoever happened to pay at the
-   * till, so netting it against groceries would quietly cancel a punishment
-   * against a receipt.
+   * Totalled per person for display only. The money itself is handled in
+   * computeBalances, which splits each fine among everyone else, so it settles
+   * like any other debt. This panel exists so a bad week stays visible instead
+   * of disappearing into the grocery maths.
    */
   const fines = useMemo(() => {
     const byPerson = new Map<string, number>();
@@ -255,7 +255,9 @@ export function Money() {
               ))}
           </ul>
           <p className="tag" style={{ marginTop: 12, letterSpacing: '0.08em' }}>
-            Kept out of the split above. A fine is owed to the house, not to whoever paid.
+            Split among everyone else, so a $10 puts $2 in front of each of the other five
+            and settles like any other debt. Listed here separately so a bad week is
+            visible rather than buried in the grocery maths.
           </p>
         </section>
       )}

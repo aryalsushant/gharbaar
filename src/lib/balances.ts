@@ -22,6 +22,11 @@ export type SettlementRow = {
   amount: number;
 };
 
+export type PenaltyRow = {
+  user_id: string;
+  amount: number;
+};
+
 export type Balance = {
   user_id: string;
   /** Positive: the group owes them. Negative: they owe the group. */
@@ -57,12 +62,20 @@ export function splitEqually(totalCents: number, count: number): number[] {
  * happened if the debt had never existed. Without this the settle-up list would
  * repeat the same advice forever, because the ledger would never hear that
  * anybody acted on it.
+ *
+ * A fine is owed to the other five rather than to a house bank account that does
+ * not exist. Missing your night costs you $10 and puts $2 in front of each
+ * housemate, which is the only version of "owed to the house" the app can tell
+ * anybody how to actually pay. Split in cents like everything else, so $10
+ * across five is exactly five twos and $10 across four is 2.50 each with
+ * nothing left over.
  */
 export function computeBalances(
   expenses: ExpenseRow[],
   splits: SplitRow[],
   memberIds: string[],
-  settlements: SettlementRow[] = []
+  settlements: SettlementRow[] = [],
+  penalties: PenaltyRow[] = []
 ): Balance[] {
   const net = new Map<string, number>(memberIds.map((id) => [id, 0]));
   const bump = (userId: string, cents: number) => {
@@ -78,6 +91,14 @@ export function computeBalances(
   for (const settlement of settlements) {
     bump(settlement.from_user, toCents(settlement.amount));
     bump(settlement.to_user, -toCents(settlement.amount));
+  }
+  for (const penalty of penalties) {
+    const others = memberIds.filter((id) => id !== penalty.user_id);
+    if (others.length === 0) continue;
+    const cents = toCents(penalty.amount);
+    bump(penalty.user_id, -cents);
+    const shares = splitEqually(cents, others.length);
+    others.forEach((id, i) => bump(id, shares[i]));
   }
 
   return Array.from(net, ([user_id, cents]) => ({ user_id, net: fromCents(cents) }));

@@ -15,8 +15,8 @@ export function People() {
   const memberIds = useMemo(() => (house.data ?? []).map((p) => p.id), [house.data]);
 
   const balances = useMemo(
-    () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds),
-    [expenses.data, splits.data, memberIds]
+    () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds, [], penalties.data ?? []),
+    [expenses.data, splits.data, memberIds, penalties.data]
   );
 
   return (
