@@ -234,7 +234,19 @@ body {
    stretching as it goes and flattening as it meets the pool. */
 .blob-drop {
   transform-origin: 50px 6px;
-  animation: blob-fall 1.15s linear forwards;
+  /* Two animations. The fall ends exactly on impact, which is what fires the
+     sound, and a second one dissolves the drop while it is inside the pool, so
+     it is never seen to stop or vanish: by the time it fades it is already part
+     of the same blob. */
+  animation:
+    blob-fall 1.15s linear forwards,
+    blob-absorb 0.34s linear 1.14s forwards;
+}
+
+@keyframes blob-absorb {
+  to {
+    opacity: 0;
+  }
 }
 
 @keyframes blob-fall {
@@ -264,20 +276,28 @@ body {
   animation: blob-pool 1.9s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
 }
 
+/* The pool has to exist before the drop arrives, or the drop lands on nothing
+   and the merge never happens. It starts swelling while the drop is still
+   falling, so the two are already one shape by the time they meet. */
 @keyframes blob-pool {
-  0%, 62% {
+  0%, 38% {
     transform: scale(0);
   }
-  78% {
-    transform: scale(0.55);
+  /* Rising to meet it. */
+  52% {
+    transform: scale(0.42);
   }
-  /* Taking the drop. */
-  88% {
-    transform: scale(1.15) scaleY(0.9);
+  /* The moment of contact, at 1.15s of this 1.9s animation. */
+  61% {
+    transform: scale(0.85) scaleY(0.95);
+  }
+  /* Taking it in and settling. */
+  74% {
+    transform: scale(1.35) scaleY(0.82);
   }
   /* Spreading out and thinning away. */
   100% {
-    transform: scale(2.6) scaleY(0.18);
+    transform: scale(2.7) scaleY(0.16);
     opacity: 0;
   }
 }
