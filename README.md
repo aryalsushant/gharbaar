@@ -77,6 +77,32 @@ npx supabase config push
 needs, while leaving real files alone. It also stops `sw.js` being cached, since
 a cached service worker is a phone stuck on an old build forever.
 
+## The six seats and their addresses
+
+Each seat is reserved for one email address. Claiming Bipul's seat requires
+being signed in as Bipul, checked inside `claim_identity()` rather than in the
+screen, so calling the API directly does not get around it.
+
+**The addresses are not in this repo, and must not be.** It is public, and they
+belong to five other people. Keep the file outside the working tree:
+
+```sh
+npx supabase db query --linked -f ~/somewhere-private/seat-emails.sql
+```
+
+```sql
+update public.roster set email = 'lowercase@example.com' where key = 'bipul';
+```
+
+Lowercase only. Gmail is case-insensitive, Postgres is not, and a capital there
+locks somebody out of their own seat.
+
+The `roster` table is not readable by any client role. Signing up is open to
+anyone, so a readable roster would hand a stranger all six addresses. Everything
+the app needs comes from `household_roster()`, which is SECURITY DEFINER and
+masks the address to `b****@gmail.com`: enough to recognise your own seat,
+useless for guessing somebody else's.
+
 ## The six seats
 
 Signing up creates an account. It does not tell the app who you are. That
