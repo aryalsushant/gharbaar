@@ -210,32 +210,40 @@ export function Money() {
         </section>
       )}
 
-      <section className="panel stack-lg rise rise-3">
+      <section className="stack-lg rise rise-3">
         <p className="tag">Where everyone stands</p>
-        <ul className="roster-list">
+        <div className="money-grid">
           {balances
             .slice()
             .sort((a, b) => b.net - a.net)
-            .map((balance) => (
-              <li key={balance.user_id}>
-                {facedName(balance.user_id)}
-                <span
-                  className="figure"
-                  style={{
-                    color:
-                      balance.net > 0.004
-                        ? 'var(--aqua)'
-                        : balance.net < -0.004
-                          ? 'var(--coral)'
-                          : 'var(--ink-faint)',
-                  }}
+            .map((balance, i) => {
+              const person = personOf(balance.user_id);
+              const owed = balance.net > 0.004;
+              const owes = balance.net < -0.004;
+
+              return (
+                <Link
+                  key={balance.user_id}
+                  to={`/house/${balance.user_id}`}
+                  className={`money-card${owed ? ' is-owed' : owes ? ' is-owing' : ''}`}
+                  style={{ animationDelay: `${0.2 + i * 0.05}s` }}
                 >
-                  {balance.net > 0.004 ? '+' : balance.net < -0.004 ? '-' : ''}
-                  {formatMoney(balance.net)}
-                </span>
-              </li>
-            ))}
-        </ul>
+                  <Avatar
+                    rosterKey={person?.roster_key ?? null}
+                    name={nameOf(balance.user_id)}
+                    url={person?.avatar_url}
+                    size={64}
+                  />
+                  <span className="money-name">{nameOf(balance.user_id)}</span>
+                  <span className="figure money-amount">
+                    {owed ? '+' : owes ? '-' : ''}
+                    {formatMoney(balance.net)}
+                  </span>
+                  <span className="tag">{owed ? 'is owed' : owes ? 'owes' : 'square'}</span>
+                </Link>
+              );
+            })}
+        </div>
       </section>
 
       {/* Deliberately its own panel, below the groceries, in coral. */}
