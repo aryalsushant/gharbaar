@@ -23,6 +23,8 @@ export function Money() {
   const settlements = useSettlements();
   const record = useRecordSettlement();
   const [error, setError] = useState<string | null>(null);
+  const [settling, setSettling] = useState<string | null>(null);
+  const [amount, setAmount] = useState('');
 
   const personOf = (id: string) => house.data?.find((p) => p.id === id);
   const nameOf = (id: string) => personOf(id)?.display_name ?? 'Someone';
@@ -103,37 +105,103 @@ export function Money() {
           <p className="tag">Settling up takes {transfers.length} transfer{transfers.length > 1 ? 's' : ''}</p>
           {error && <p className="notice notice-bad">{error}</p>}
           <ul className="roster-list">
-            {transfers.map((t, i) => (
-              <li key={`${t.from}-${t.to}-${i}`}>
-                <span>
-                  {t.from === userId ? 'You pay' : `${nameOf(t.from)} pays`}{' '}
-                  {t.to === userId ? 'you' : nameOf(t.to)}
-                </span>
-                <span className="row" style={{ gap: 12 }}>
-                  <span className="figure">{formatMoney(t.amount)}</span>
-                  {t.to === userId && (
-                    <button
-                      className="btn btn-small"
-                      disabled={record.isPending}
-                      onClick={async () => {
+            {transfers.map((t, i) => {
+              const key = `${t.from}-${t.to}-${i}`;
+              const open = settling === key;
+
+              return (
+                <li key={key} className={open ? 'settling' : undefined}>
+                  <span>
+                    {t.from === userId ? 'You pay' : `${nameOf(t.from)} pays`}{' '}
+                    {t.to === userId ? 'you' : nameOf(t.to)}
+                  </span>
+
+                  <span className="row" style={{ gap: 12 }}>
+                    <span className="figure">{formatMoney(t.amount)}</span>
+                    {t.to === userId && !open && (
+                      <button
+                        className="btn btn-small"
+                        onClick={() => {
+                          setError(null);
+                          // Prefilled with what is owed, since that is what
+                          // usually changes hands, but it is a starting point
+                          // rather than an assumption.
+                          setAmount(t.amount.toFixed(2));
+                          setSettling(key);
+                        }}
+                      >
+                        They paid me
+                      </button>
+                    )}
+                  </span>
+
+                  {open && (
+                    <form
+                      className="settle-form"
+                      onSubmit={async (event) => {
+                        event.preventDefault();
                         setError(null);
                         try {
                           await record.mutateAsync({
                             fromUser: t.from,
                             toUser: userId!,
-                            amount: t.amount,
+                            amount: Number(amount),
                           });
+                          setSettling(null);
+                          setAmount('');
                         } catch (err) {
                           setError(err instanceof Error ? err.message : 'Could not record that.');
                         }
                       }}
                     >
-                      Got it
-                    </button>
+                      <span className="tag">How much did {nameOf(t.from)} hand over?</span>
+                      <div className="row" style={{ marginTop: 8 }}>
+                        <div className="amount-field" style={{ flex: 1 }}>
+                          <span className="amount-sign figure" style={{ fontSize: '1rem', left: 14 }}>
+                            $
+                          </span>
+                          <input
+                            className="input figure"
+                            style={{ paddingLeft: 30, fontSize: '1rem' }}
+                            type="number"
+                            inputMode="decimal"
+                            step="0.01"
+                            min="0"
+                            max={t.amount}
+                            autoFocus
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                          />
+                        </div>
+                        <button
+                          className="btn btn-small"
+                          type="submit"
+                          disabled={record.isPending || !(Number(amount) > 0)}
+                        >
+                          {record.isPending ? 'Saving' : 'Record'}
+                        </button>
+                        <button
+                          className="link"
+                          type="button"
+                          onClick={() => {
+                            setSettling(null);
+                            setError(null);
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                      {Number(amount) > 0 && Number(amount) < t.amount && (
+                        <p className="tag" style={{ marginTop: 8, letterSpacing: '0.08em' }}>
+                          Part payment. {nameOf(t.from)} will still owe{' '}
+                          {formatMoney(t.amount - Number(amount))}.
+                        </p>
+                      )}
+                    </form>
                   )}
-                </span>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
           <p className="tag" style={{ marginTop: 12, letterSpacing: '0.08em' }}>
             Only the person being paid can mark a transfer done, so nobody can clear a debt

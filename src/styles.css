@@ -925,6 +925,19 @@ h2 {
   padding-left: 0.5em;
 }
 
+/* A settle-up row that has opened up: the amount box drops below the line
+   rather than squeezing into it, so the number has room to be read. */
+.roster-list li.settling {
+  flex-wrap: wrap;
+}
+
+.settle-form {
+  flex-basis: 100%;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+
 .amount-field {
   position: relative;
   display: flex;
