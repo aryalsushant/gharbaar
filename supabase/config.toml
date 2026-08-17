@@ -43,14 +43,19 @@ otp_length = 6
 # Credentials come from the environment, never from this file. The repo is
 # public, and an app password is a live credential for a Google account.
 #
-#   $env:SMTP_USER='you@gmail.com'; $env:SMTP_PASS='16 chars'; npx supabase config push
+#   $env:SMTP_PASS='16 chars'; npx supabase config push
+#
+# The address is here rather than in an env var because it is already the author
+# of every commit in this public repo. The app password is not, and never will
+# be: an empty SMTP_PASS makes this push fail loudly rather than quietly
+# clearing the credential.
 [auth.email.smtp]
 enabled = true
 host = "smtp.gmail.com"
 port = 465
-user = "env(SMTP_USER)"
+user = "aryalsuwan.2003@gmail.com"
 pass = "env(SMTP_PASS)"
-admin_email = "env(SMTP_USER)"
+admin_email = "aryalsuwan.2003@gmail.com"
 sender_name = "Gharbaar"
 
 # The mail that carries the code. The default template sends a magic link, and
