@@ -11,8 +11,7 @@
  * Deployed with:  npx supabase functions deploy cook-reminder
  * Needs secrets:  VAPID_PRIVATE_KEY, VAPID_PUBLIC_KEY, CRON_SECRET
  */
-import { createClient } from 'jsr:@supabase/supabase-js@2';
-import webpush from 'npm:web-push@3.6.7';
+import { authorised, pushTo, serviceClient } from '../_shared/push.ts';
 
 const HOUSE_TZ = 'America/Chicago';
 const SEND_AT_HOUR = 17;
@@ -42,9 +41,7 @@ function daysBetween(startKey: string, endKey: string): number {
 Deno.serve(async (request) => {
   // pg_cron is the only caller. Without this the function is a public endpoint
   // that will happily notify the house on demand.
-  if (request.headers.get('x-cron-secret') !== Deno.env.get('CRON_SECRET')) {
-    return new Response('no', { status: 401 });
-  }
+  if (!authorised(request)) return new Response('no', { status: 401 });
 
   const url = new URL(request.url);
   const forced = url.searchParams.get('force') === '1';
@@ -53,10 +50,7 @@ Deno.serve(async (request) => {
     return Response.json({ skipped: 'wrong hour', hour: hourIn(HOUSE_TZ) });
   }
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  );
+  const supabase = serviceClient();
 
   const today = todayIn(HOUSE_TZ);
 
@@ -103,50 +97,12 @@ Deno.serve(async (request) => {
 
   if (!assignee) return Response.json({ skipped: 'nobody in the rotation' });
 
-  const { data: subscriptions } = await supabase
-    .from('push_subscriptions')
-    .select('id, endpoint, p256dh, auth')
-    .eq('user_id', assignee);
-
-  if (!subscriptions || subscriptions.length === 0) {
-    return Response.json({ skipped: 'assignee has no device', assignee });
-  }
-
-  webpush.setVapidDetails(
-    'mailto:gharbaar@example.com',
-    Deno.env.get('VAPID_PUBLIC_KEY')!,
-    Deno.env.get('VAPID_PRIVATE_KEY')!
-  );
-
-  const payload = JSON.stringify({
+  const result = await pushTo(supabase, [assignee], {
     title: 'Your night to cook',
     body: 'Dinner and the clean up are yours tonight. Someone else signs it off.',
     url: '/today',
     tag: `cook-${today}`,
   });
 
-  let sent = 0;
-  const dead: string[] = [];
-
-  for (const sub of subscriptions) {
-    try {
-      await webpush.sendNotification(
-        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-        payload
-      );
-      sent++;
-    } catch (error) {
-      // 404 and 410 mean the browser threw the subscription away: uninstalled,
-      // permission revoked, or storage cleared. Keeping it would mean retrying
-      // a dead endpoint every evening forever.
-      const status = (error as { statusCode?: number }).statusCode;
-      if (status === 404 || status === 410) dead.push(sub.id);
-    }
-  }
-
-  if (dead.length > 0) {
-    await supabase.from('push_subscriptions').delete().in('id', dead);
-  }
-
-  return Response.json({ date: today, assignee, sent, pruned: dead.length });
+  return Response.json({ date: today, assignee, ...result });
 });
