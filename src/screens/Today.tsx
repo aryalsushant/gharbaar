@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { DayStrip } from '../components/DayStrip';
 import { Nav } from '../components/Nav';
+import { PushSetup } from '../components/PushSetup';
 import { useAuth } from '../lib/auth';
 import {
   useApplySwap,
@@ -361,6 +362,8 @@ export function Today() {
           )}
         </section>
       )}
+
+      <div className="stack-lg">{userId && <PushSetup userId={userId} />}</div>
 
       <footer className="rise rise-5 footer-row">
         <button className="link" onClick={() => signOut()}>
