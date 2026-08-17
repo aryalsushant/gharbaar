@@ -5,6 +5,7 @@ import { Avatar } from '../components/Avatar';
 import { Nav } from '../components/Nav';
 import { useAuth } from '../lib/auth';
 import { computeBalances, formatMoney, settleUp } from '../lib/balances';
+import { categoryLabel } from '../lib/categories';
 import {
   useExpenses,
   useHousehold,
@@ -221,8 +222,14 @@ export function Money() {
               <li key={expense.id}>
                 <div className="expense-row">
                   <span className="strip-when tag figure">{expense.created_at.slice(0, 10)}</span>
-                  <span className="strip-who">{expense.description || 'Groceries'}</span>
-                  <span className="expense-meta tag">{nameOf(expense.paid_by)} paid</span>
+                  <span className="strip-who">
+                    {expense.description || categoryLabel(expense.category)}
+                  </span>
+                  <span className="expense-meta tag">
+                    {categoryLabel(expense.category)}
+                    {expense.apartment ? ` · ${expense.apartment}` : ''} · {nameOf(expense.paid_by)}{' '}
+                    paid
+                  </span>
                   <span className="figure expense-amount">{formatMoney(Number(expense.amount))}</span>
                 </div>
               </li>
