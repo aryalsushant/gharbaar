@@ -8,8 +8,9 @@ type AuthValue = {
   userId: string | null;
   /** True until the persisted session has been read back from storage. */
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  /** Email a six digit code, creating the account if this is a first visit. */
+  sendCode: (email: string) => Promise<void>;
+  verifyCode: (email: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -38,19 +39,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       userId: session?.user.id ?? null,
       loading,
-      signIn: async (email, password) => {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
+
+      /**
+       * No passwords anywhere in this app. Owning the inbox is the proof, which
+       * is the one credential six housemates already have and cannot forget.
+       */
+      sendCode: async (email) => {
+        const { error } = await supabase.auth.signInWithOtp({
+          email: email.trim().toLowerCase(),
+          options: { shouldCreateUser: true },
         });
         if (error) throw error;
       },
-      // No display name here. The name comes from claiming one of the six
-      // roster identities after the account exists, not from a text field.
-      signUp: async (email, password) => {
-        const { error } = await supabase.auth.signUp({ email: email.trim(), password });
+
+      verifyCode: async (email, code) => {
+        const { error } = await supabase.auth.verifyOtp({
+          email: email.trim().toLowerCase(),
+          token: code.trim(),
+          type: 'email',
+        });
         if (error) throw error;
       },
+
       signOut: async () => {
         const { error } = await supabase.auth.signOut();
         if (error) throw error;

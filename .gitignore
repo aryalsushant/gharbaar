@@ -53,3 +53,6 @@ app-example
 
 # Playwright MCP scratch output
 .playwright-mcp/
+
+# Full-size photo originals, kept locally, never bundled
+public/people/originals/

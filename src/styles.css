@@ -158,6 +158,73 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
+   Splash
+   The tide runs sideways rather than the house sinking, so the mark stays still
+   and the water moves through it. That reads as a place in water; a house
+   sliding under reads as a flood.
+   --------------------------------------------------------------------------- */
+
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: radial-gradient(120% 90% at 50% 30%, #0b2537 0%, #04101a 60%, #020a11 100%);
+  transition: opacity 0.7s var(--ease-liquid), transform 0.7s var(--ease-liquid);
+}
+
+.splash.is-leaving {
+  opacity: 0;
+  transform: scale(1.06);
+  pointer-events: none;
+}
+
+.splash-mark {
+  width: clamp(108px, 34vw, 160px);
+  animation: surface 1s var(--ease-liquid) both;
+}
+
+.splash-mark svg {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 20px 44px rgba(99, 230, 200, 0.22));
+}
+
+/* One wavelength is 32 units wide, so translating by exactly that loops
+   seamlessly however long it runs. */
+.splash-tide {
+  animation: tide 3.2s linear infinite;
+}
+
+@keyframes tide {
+  to {
+    transform: translateX(32px);
+  }
+}
+
+.splash-name {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(2rem, 9vw, 2.7rem);
+  letter-spacing: -0.045em;
+  margin: 14px 0 0;
+  background: linear-gradient(168deg, #ffffff 8%, var(--aqua) 62%, var(--aqua-deep) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: surface 1s var(--ease-liquid) 0.35s both;
+}
+
+.splash-sub {
+  margin: 0;
+  animation: surface 1s var(--ease-liquid) 0.55s both;
+}
+
+/* ---------------------------------------------------------------------------
    Layout
    --------------------------------------------------------------------------- */
 
@@ -403,6 +470,19 @@ h2 {
   border-color: rgba(255, 138, 107, 0.3);
 }
 
+/* Not an error and not a success: something to do before continuing. */
+.notice-warn {
+  color: var(--amber);
+  background: rgba(255, 212, 138, 0.08);
+  border-color: rgba(255, 212, 138, 0.3);
+  line-height: 1.5;
+}
+
+.notice-warn strong {
+  color: var(--amber);
+  font-family: var(--display);
+}
+
 .notice-good {
   color: var(--aqua);
   background: rgba(99, 230, 200, 0.08);
@@ -573,6 +653,478 @@ h2 {
 
 .roster-list li:last-child {
   border-bottom: none;
+}
+
+/* ---------------------------------------------------------------------------
+   The board
+   --------------------------------------------------------------------------- */
+
+.centered.wide {
+  max-width: 34rem;
+}
+
+/* Fines get their own button weight. Charging somebody $10 should not look
+   like the same gesture as saying well done. */
+.btn-danger {
+  color: #2a0d06;
+  background: linear-gradient(150deg, #ffb59d 0%, var(--coral) 55%, #e0603f 100%);
+  box-shadow:
+    0 14px 34px -16px rgba(255, 138, 107, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* Someone needs help. Distinct from a fine and from a birthday: this one is a
+   question aimed at everybody, so it borrows the accent rather than a warning
+   colour. */
+.panel-ask {
+  border-color: rgba(99, 230, 200, 0.3);
+  background: rgba(99, 230, 200, 0.055);
+}
+
+.btn-small {
+  width: auto;
+  flex: none;
+  font-size: 0.85rem;
+  padding: 8px 16px;
+}
+
+.birthday {
+  border-radius: var(--bend-sm);
+  border: 1px solid rgba(255, 212, 138, 0.3);
+  background: rgba(255, 212, 138, 0.08);
+  color: var(--amber);
+  padding: 11px 14px;
+  margin-bottom: 18px;
+  font-size: 0.94rem;
+}
+
+.birthday p {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.birthday p + p {
+  margin-top: 5px;
+}
+
+.birthday strong {
+  font-family: var(--display);
+  font-weight: 600;
+}
+
+.birthday-mark {
+  color: var(--amber);
+}
+
+/* --- the fortnight strip --- */
+
+.strip {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.strip-day {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 7.5rem 1fr auto;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  padding: 13px 16px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--hairline);
+  border-radius: var(--bend-sm);
+  animation: surface 0.8s var(--ease-liquid) both;
+  transition:
+    background 0.4s var(--ease-liquid),
+    border-color 0.4s var(--ease-liquid),
+    transform 0.4s var(--ease-liquid);
+}
+
+.strip-day:hover {
+  background: var(--glass-lift);
+  border-color: var(--hairline-bright);
+  transform: translateX(3px);
+}
+
+/* Tonight is the only row that gets the accent, so the eye lands on it before
+   reading anything. */
+.strip-day.is-today {
+  border-color: rgba(99, 230, 200, 0.45);
+  background: rgba(99, 230, 200, 0.07);
+}
+
+.strip-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: -0.015em;
+}
+
+.strip-flags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.flag {
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid;
+}
+
+.flag-swap {
+  color: var(--ink-soft);
+  border-color: var(--hairline-bright);
+}
+
+.flag-done {
+  color: var(--aqua);
+  border-color: rgba(99, 230, 200, 0.4);
+  background: rgba(99, 230, 200, 0.09);
+}
+
+.flag-fined {
+  color: var(--coral);
+  border-color: rgba(255, 138, 107, 0.4);
+  background: rgba(255, 138, 107, 0.09);
+}
+
+.cover-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 9px;
+  margin-top: 10px;
+}
+
+.cover-choices .btn {
+  width: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Faces
+   Photos arrive one at a time as people send them, so every one of these has
+   to look deliberate whether the image is there or not.
+   --------------------------------------------------------------------------- */
+
+.avatar {
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--hairline-bright);
+  background: rgba(2, 10, 17, 0.5);
+}
+
+.avatar-initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.faced {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* The face on the confirm step, big enough to actually recognise somebody,
+   ringed so it reads as a portrait rather than a floating cut-out. */
+.claim-face {
+  margin: 4px 0 14px;
+}
+
+.claim-face .avatar {
+  border-width: 2px;
+  border-color: rgba(99, 230, 200, 0.4);
+  box-shadow: 0 18px 40px -18px var(--aqua-glow);
+}
+
+/* ---------------------------------------------------------------------------
+   Navigation
+   --------------------------------------------------------------------------- */
+
+.nav {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 26px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: rgba(2, 10, 17, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  align-self: flex-start;
+}
+
+.nav-link {
+  font-family: var(--body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  text-decoration: none;
+  padding: 8px 18px;
+  border-radius: 999px;
+  transition:
+    color 0.4s var(--ease-liquid),
+    background 0.4s var(--ease-liquid);
+}
+
+.nav-link.is-on {
+  color: var(--abyss-deep);
+  background: linear-gradient(150deg, #9ff5df, var(--aqua));
+}
+
+.nav-link:not(.is-on):hover {
+  color: var(--ink);
+  background: var(--glass-lift);
+}
+
+/* ---------------------------------------------------------------------------
+   Money
+   --------------------------------------------------------------------------- */
+
+/* The one question the ledger asks first, so it gets the whole width. */
+.ask {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+
+/* Fines sit apart from the shopping, and are coloured so nobody mistakes the
+   two. Netting a punishment against a grocery receipt would hide both. */
+.panel-fines {
+  border-color: rgba(255, 138, 107, 0.28);
+  background: rgba(255, 138, 107, 0.05);
+}
+
+/* Six digits, spaced out so they read as a code rather than a number. */
+.code-input {
+  font-size: 1.9rem;
+  letter-spacing: 0.5em;
+  text-align: center;
+  padding-left: 0.5em;
+}
+
+/* A settle-up row that has opened up: the amount box drops below the line
+   rather than squeezing into it, so the number has room to be read. */
+.roster-list li.settling {
+  flex-wrap: wrap;
+}
+
+.settle-form {
+  flex-basis: 100%;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+
+.amount-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.amount-sign {
+  position: absolute;
+  left: 16px;
+  font-size: 1.5rem;
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+
+.amount-input {
+  font-size: 1.9rem;
+  padding-left: 38px;
+  letter-spacing: -0.04em;
+}
+
+/* Strip the browser's spinners. They are ugly and nobody nudges a bill up by
+   one cent at a time. */
+.amount-input::-webkit-outer-spin-button,
+.amount-input::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.amount-input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* A chosen person, in either the paid-by row or the split-between row. */
+.btn-quiet.is-on {
+  color: var(--aqua);
+  border-color: rgba(99, 230, 200, 0.55);
+  background: rgba(99, 230, 200, 0.1);
+}
+
+.expense-row {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr auto;
+  grid-template-areas:
+    'when what amount'
+    'when who  amount';
+  align-items: center;
+  gap: 2px 12px;
+  padding: 13px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--bend-sm);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.expense-row .strip-when {
+  grid-area: when;
+}
+
+.expense-row .strip-who {
+  grid-area: what;
+  font-size: 1rem;
+}
+
+.expense-meta {
+  grid-area: who;
+}
+
+.expense-amount {
+  grid-area: amount;
+  font-size: 1.05rem;
+  color: var(--aqua);
+}
+
+/* ---------------------------------------------------------------------------
+   The house
+   --------------------------------------------------------------------------- */
+
+.people-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 12px;
+}
+
+.person-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 16px;
+  text-align: center;
+  text-decoration: none;
+  color: var(--ink);
+  background: var(--glass);
+  border: 1px solid var(--hairline);
+  border-radius: var(--bend);
+  backdrop-filter: blur(22px) saturate(170%);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  transition:
+    transform 0.45s var(--ease-liquid),
+    border-color 0.45s var(--ease-liquid),
+    background 0.45s var(--ease-liquid);
+}
+
+.person-card:hover {
+  transform: translateY(-3px);
+  background: var(--glass-lift);
+  border-color: rgba(99, 230, 200, 0.4);
+}
+
+.person-name {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+}
+
+.person-net {
+  font-size: 0.72rem;
+}
+
+.flag-birthday {
+  color: var(--amber);
+  border-color: rgba(255, 212, 138, 0.4);
+  background: rgba(255, 212, 138, 0.09);
+}
+
+.person-head {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+/* Four numbers that say who somebody has been to live with. */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 10px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 15px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--bend-sm);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.stat-value {
+  font-size: 1.35rem;
+  letter-spacing: -0.04em;
+}
+
+.faced-link {
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.3s var(--ease-liquid);
+}
+
+.faced-link:hover {
+  border-bottom-color: var(--aqua);
+}
+
+/* Destructive actions live down here in the quietest type on the screen, and
+   ask a second time before doing anything. */
+.footer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 18px;
+  margin-top: 30px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hairline);
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
+.link-danger {
+  color: var(--coral);
+}
+
+.link-danger:hover {
+  border-bottom-color: var(--coral);
 }
 
 @media (prefers-reduced-motion: reduce) {

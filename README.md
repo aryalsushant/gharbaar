@@ -43,6 +43,66 @@ Be careful with `config push`. Any key absent from `config.toml` is filled in
 with a CLI default rather than left alone, so it can change settings you never
 touched. Read the diff it prints.
 
+## Putting it online
+
+Housemates cannot use `localhost`, and web push needs HTTPS, so this has to be
+deployed before anyone else can touch it.
+
+```sh
+npx vercel          # first run links the project
+npx vercel --prod
+```
+
+Two things Vercel needs that are not in the repo:
+
+1. `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as environment variables in
+   the project settings. `.env` is gitignored, and the build inlines these, so
+   without them the deployed app throws on load.
+2. Nothing else. The build is static.
+
+Then point Supabase at the new origin, or password resets will send people to
+localhost:
+
+```toml
+# supabase/config.toml
+site_url = "https://your-app.vercel.app"
+additional_redirect_urls = ["https://your-app.vercel.app", "http://localhost:5173"]
+```
+
+```sh
+npx supabase config push
+```
+
+`vercel.json` rewrites unknown paths to `index.html`, which client-side routing
+needs, while leaving real files alone. It also stops `sw.js` being cached, since
+a cached service worker is a phone stuck on an old build forever.
+
+## The six seats and their addresses
+
+Each seat is reserved for one email address. Claiming Bipul's seat requires
+being signed in as Bipul, checked inside `claim_identity()` rather than in the
+screen, so calling the API directly does not get around it.
+
+**The addresses are not in this repo, and must not be.** It is public, and they
+belong to five other people. Keep the file outside the working tree:
+
+```sh
+npx supabase db query --linked -f ~/somewhere-private/seat-emails.sql
+```
+
+```sql
+update public.roster set email = 'lowercase@example.com' where key = 'bipul';
+```
+
+Lowercase only. Gmail is case-insensitive, Postgres is not, and a capital there
+locks somebody out of their own seat.
+
+The `roster` table is not readable by any client role. Signing up is open to
+anyone, so a readable roster would hand a stranger all six addresses. Everything
+the app needs comes from `household_roster()`, which is SECURITY DEFINER and
+masks the address to `b****@gmail.com`: enough to recognise your own seat,
+useless for guessing somebody else's.
+
 ## The six seats
 
 Signing up creates an account. It does not tell the app who you are. That

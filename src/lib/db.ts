@@ -8,7 +8,6 @@ export type Profile = {
   display_name: string;
   avatar_url: string | null;
   roster_key: string | null;
-  date_of_birth: string | null;
 };
 
 export type RosterEntry = {
@@ -16,6 +15,8 @@ export type RosterEntry = {
   display_name: string;
   sort_order: number;
   claimed: boolean;
+  /** Masked, like b****@gmail.com. Null when the seat is not bound yet. */
+  email_hint: string | null;
 };
 
 export type Expense = {
@@ -90,14 +91,23 @@ export function useRoster() {
   });
 }
 
+/** Names only, readable before anybody has signed in. */
+export function usePublicRoster() {
+  return useQuery({
+    queryKey: ['public-roster'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('public_roster');
+      if (error) throw new Error(error.message);
+      return data as { key: string; display_name: string; sort_order: number }[];
+    },
+  });
+}
+
 export function useClaimIdentity() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ key, dateOfBirth }: { key: string; dateOfBirth: string }) => {
-      const { error } = await supabase.rpc('claim_identity', {
-        identity_key: key,
-        dob: dateOfBirth,
-      });
+    mutationFn: async (key: string) => {
+      const { error } = await supabase.rpc('claim_identity', { identity_key: key });
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
@@ -115,7 +125,7 @@ export function useProfile(userId: string | null) {
       unwrap(
         await supabase
           .from('profiles')
-          .select('id, display_name, avatar_url, roster_key, date_of_birth')
+          .select('id, display_name, avatar_url, roster_key')
           .eq('id', userId!)
           .single()
       ) as Profile,
@@ -131,7 +141,7 @@ export function useHousehold() {
       unwrap(
         await supabase
           .from('profiles')
-          .select('id, display_name, avatar_url, roster_key, date_of_birth')
+          .select('id, display_name, avatar_url, roster_key')
           .not('roster_key', 'is', null)
       ) as Profile[],
   });
@@ -219,6 +229,69 @@ export function useAddExpense() {
   });
 }
 
+// --- settling up ------------------------------------------------------------
+
+export type Settlement = {
+  id: string;
+  from_user: string;
+  to_user: string;
+  amount: number;
+  note: string;
+  settled_on: string;
+};
+
+export function useSettlements() {
+  return useQuery({
+    queryKey: ['settlements'],
+    queryFn: async () =>
+      unwrap(
+        await supabase
+          .from('settlements')
+          .select('id, from_user, to_user, amount, note, settled_on')
+          .order('settled_on', { ascending: false })
+      ) as Settlement[],
+  });
+}
+
+/**
+ * Only the person who was paid can record it, which the policy enforces. A
+ * payer logging their own payment is a claim; a recipient logging one is an
+ * admission against interest, and nobody writes down money they did not get.
+ */
+export function useRecordSettlement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      fromUser,
+      toUser,
+      amount,
+      note = '',
+    }: {
+      fromUser: string;
+      toUser: string;
+      amount: number;
+      note?: string;
+    }) => {
+      const { error } = await supabase
+        .from('settlements')
+        .insert({ from_user: fromUser, to_user: toUser, amount, note });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settlements'] }),
+  });
+}
+
+export function useUnrecordSettlement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('settlements').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settlements'] }),
+  });
+}
+
 // --- responsibilities -------------------------------------------------------
 
 export function useResponsibilities() {
@@ -265,6 +338,48 @@ export function useCreateResponsibility() {
       return responsibility;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['responsibilities'] }),
+  });
+}
+
+/**
+ * Bring the rotation in line with the house without destroying anything.
+ *
+ * This is what people actually want when they reach for "restart": the rota was
+ * opened before everyone had claimed a seat, and the missing housemates need to
+ * be in it. Adding them is not a reason to lose the swaps and sign-offs that
+ * have already happened.
+ *
+ * Existing members keep their rotation_order, so nobody who has already cooked
+ * gets moved back to the front. New people are appended in roster order.
+ */
+export function useSyncRotationMembers(respId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (orderedUserIds: string[]) => {
+      const existing = unwrap(
+        await supabase
+          .from('responsibility_members')
+          .select('user_id, rotation_order')
+          .eq('responsibility_id', respId!)
+      ) as { user_id: string; rotation_order: number }[];
+
+      const known = new Set(existing.map((m) => m.user_id));
+      const missing = orderedUserIds.filter((id) => !known.has(id));
+      if (missing.length === 0) return 0;
+
+      const nextOrder = existing.reduce((max, m) => Math.max(max, m.rotation_order), -1) + 1;
+
+      const { error } = await supabase.from('responsibility_members').insert(
+        missing.map((userId, i) => ({
+          responsibility_id: respId,
+          user_id: userId,
+          rotation_order: nextOrder + i,
+        }))
+      );
+      if (error) throw new Error(error.message);
+      return missing.length;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['rotation-members', respId] }),
   });
 }
 
@@ -367,18 +482,85 @@ export function useSetOverride(respId: string | undefined) {
   });
 }
 
-export function useClearOverride(respId: string | undefined) {
+/**
+ * Both halves of a swap in one upsert. Writing them as two separate mutations
+ * would let the first land and the second fail, which leaves one person cooking
+ * twice and the other not at all.
+ */
+export function useApplySwap(respId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (date: string) => {
+    mutationFn: async (rows: { date: string; user_id: string }[]) => {
       const { error } = await supabase
         .from('responsibility_overrides')
-        .delete()
-        .eq('responsibility_id', respId!)
-        .eq('date', date);
+        .upsert(
+          rows.map((row) => ({ ...row, responsibility_id: respId })),
+          { onConflict: 'responsibility_id,date' }
+        );
       if (error) throw new Error(error.message);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['overrides', respId] }),
+  });
+}
+
+// --- swap requests ----------------------------------------------------------
+
+export type SwapRequest = {
+  id: string;
+  date: string;
+  requested_by: string;
+  note: string;
+  created_at: string;
+};
+
+export function useSwapRequests(respId: string | undefined) {
+  return useQuery({
+    queryKey: ['swap-requests', respId],
+    queryFn: async () =>
+      unwrap(
+        await supabase
+          .from('swap_requests')
+          .select('id, date, requested_by, note, created_at')
+          .eq('responsibility_id', respId!)
+          .order('date')
+      ) as SwapRequest[],
+    enabled: !!respId,
+  });
+}
+
+/** "I cannot cook that night." Upserts, so asking twice is not two asks. */
+export function useRequestSwap(respId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      date,
+      requestedBy,
+      note,
+    }: {
+      date: string;
+      requestedBy: string;
+      note: string;
+    }) => {
+      const { error } = await supabase
+        .from('swap_requests')
+        .upsert(
+          { responsibility_id: respId, date, requested_by: requestedBy, note },
+          { onConflict: 'responsibility_id,date' }
+        );
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['swap-requests', respId] }),
+  });
+}
+
+export function useCloseSwapRequest(respId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('swap_requests').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['swap-requests', respId] }),
   });
 }
 
