@@ -326,64 +326,6 @@ export function useDeleteExpense() {
   });
 }
 
-/**
- * One person owes everybody else.
- *
- * An expense has a single payer, so "Sushant owes the other five $2 each"
- * cannot be one row. It is five, each paid by a different housemate and split
- * with the person being charged, which nets to exactly the intended position:
- * the one charged is down the full amount, everybody else is up their share.
- *
- * Split in cents like everything else, so $10 across five is five twos and
- * across three is 3.34, 3.33, 3.33.
- */
-export function useChargePerson() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      userId,
-      othersIds,
-      amount,
-      description,
-    }: {
-      userId: string;
-      othersIds: string[];
-      amount: number;
-      description: string;
-    }) => {
-      if (othersIds.length === 0) throw new Error('Nobody else is here to owe.');
-
-      const shares = splitEqually(toCents(amount), othersIds.length);
-
-      for (let i = 0; i < othersIds.length; i++) {
-        const share = fromCents(shares[i]);
-        const expense = unwrap(
-          await supabase
-            .from('expenses')
-            .insert({
-              paid_by: othersIds[i],
-              amount: share,
-              description: description.trim(),
-              split_type: 'equal',
-              category: 'misc',
-            })
-            .select('id')
-            .single()
-        ) as { id: string };
-
-        const { error } = await supabase
-          .from('expense_splits')
-          .insert({ expense_id: expense.id, user_id: userId, amount_owed: share });
-        if (error) throw new Error(error.message);
-      }
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['expenses'] });
-      qc.invalidateQueries({ queryKey: ['splits'] });
-    },
-  });
-}
-
 // --- the list ---------------------------------------------------------------
 
 export type GroceryItem = {

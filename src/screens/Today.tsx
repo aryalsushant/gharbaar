@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 
 import { Avatar } from '../components/Avatar';
 import { DayStrip } from '../components/DayStrip';
@@ -313,13 +312,9 @@ export function Today() {
             >
               Yes, done
             </button>
-            <Link
-              className="link charge-link"
-              to={`/money/add?charge=${tonight!.assignee}&on=${tonight!.date}`}
-            >
-              They did not
-              <span aria-hidden="true">→</span>
-            </Link>
+            <p className="tag" style={{ marginTop: 12, letterSpacing: '0.08em' }}>
+              If they did not, leave it. Nothing is charged and nothing is recorded.
+            </p>
           </>
         )}
       </section>

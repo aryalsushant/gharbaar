@@ -1,19 +1,11 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import { Avatar } from '../components/Avatar';
 import { useAuth } from '../lib/auth';
 import { formatMoney, splitEqually, toCents } from '../lib/balances';
 import { APARTMENTS, CATEGORIES, categoryOf } from '../lib/categories';
-import {
-  useAddExpense,
-  useChargePerson,
-  useDeleteExpense,
-  useEditExpense,
-  useExpense,
-  useHousehold,
-} from '../lib/db';
-import { longDate } from '../lib/dates';
+import { useAddExpense, useDeleteExpense, useEditExpense, useExpense, useHousehold } from '../lib/db';
 
 /**
  * One form, two jobs. Adding and correcting an expense ask exactly the same
@@ -29,11 +21,6 @@ export function AddExpense() {
   const editExpense = useEditExpense();
   const removeExpense = useDeleteExpense();
   const existing = useExpense(id);
-  const charge = useChargePerson();
-
-  const [params] = useSearchParams();
-  const chargeId = params.get('charge');
-  const chargeDate = params.get('on');
 
   const editing = !!id;
   const [loaded, setLoaded] = useState(false);
@@ -134,89 +121,6 @@ export function AddExpense() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save that.');
     }
-  }
-
-  if (chargeId) {
-    const person = everyone.find((p) => p.id === chargeId);
-    const others = everyone.filter((p) => p.id !== chargeId);
-    const each = others.length ? Number(amount || 10) / others.length : 0;
-
-    return (
-      <div className="centered">
-        <header className="rise rise-1">
-          <p className="tag">{chargeDate ? longDate(chargeDate) : 'Missed night'}</p>
-          <h1 className="wordmark">{person?.display_name ?? 'They'} did not cook</h1>
-          <p className="lede">
-            This is not a rule the app enforces. It writes what the house agreed, and any
-            of it can be edited or deleted afterwards.
-          </p>
-        </header>
-
-        <form
-          className="panel stack-lg rise rise-2"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            setError(null);
-            try {
-              await charge.mutateAsync({
-                userId: chargeId,
-                othersIds: others.map((p) => p.id),
-                amount: Number(amount || 10),
-                description: description.trim() || `Missed dinner, ${person?.display_name ?? ''}`.trim(),
-              });
-              navigate('/money');
-            } catch (err) {
-              setError(err instanceof Error ? err.message : 'Could not record that.');
-            }
-          }}
-        >
-          {error && <p className="notice notice-bad">{error}</p>}
-
-          <label className="field">
-            <span className="tag">How much</span>
-            <div className="amount-field">
-              <span className="amount-sign figure">$</span>
-              <input
-                className="input amount-input figure"
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0"
-                value={amount || '10'}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-            </div>
-          </label>
-
-          <label className="field">
-            <span className="tag">What for</span>
-            <input
-              className="input"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={`Missed dinner, ${person?.display_name ?? ''}`.trim()}
-            />
-          </label>
-
-          <p className="readout" style={{ margin: '0 0 20px' }}>
-            {person?.display_name} owes {others.length}{' '}
-            {others.length === 1 ? 'person' : 'people'} {formatMoney(each)} each
-          </p>
-
-          <button className="btn" type="submit" disabled={charge.isPending || others.length === 0}>
-            {charge.isPending ? 'Writing it' : 'Record it'}
-          </button>
-          <button
-            className="btn btn-quiet"
-            type="button"
-            style={{ marginTop: 10 }}
-            onClick={() => navigate('/today')}
-          >
-            Cancel
-          </button>
-        </form>
-      </div>
-    );
   }
 
   return (
