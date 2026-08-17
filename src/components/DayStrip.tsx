@@ -10,27 +10,73 @@ type Props = {
   photoOf: (userId: string | null) => string | null;
   doneOn: (date: string) => boolean;
   finedOn: (date: string) => boolean;
+  askedOn: (date: string) => boolean;
   onPick: (date: string) => void;
 };
 
 /**
- * The fortnight ahead. Past days are not shown: the rotation is computed, so
- * yesterday is always answerable, but nobody needs to relitigate it and a strip
- * that scrolls both ways buries tonight in the middle.
+ * The week ahead, with tonight and tomorrow given real estate.
+ *
+ * Those two are the only ones anybody acts on, so they get a face large enough
+ * to recognise across a kitchen rather than a 26px disc you have to squint at.
+ * The rest of the week is reference, and is laid out as such.
+ *
+ * Seven days, not fourteen. The strip is computed from today, so it rolls
+ * forward by itself and never needs resetting; a fortnight was just five more
+ * rows nobody read.
  */
-export function DayStrip({ days, todayKey, nameOf, seatOf, photoOf, doneOn, finedOn, onPick }: Props) {
-  return (
-    <ul className="strip">
-      {days.map((day, i) => {
-        const done = doneOn(day.date);
-        const fined = finedOn(day.date);
+export function DayStrip({
+  days,
+  todayKey,
+  nameOf,
+  seatOf,
+  photoOf,
+  doneOn,
+  finedOn,
+  askedOn,
+  onPick,
+}: Props) {
+  const flags = (day: DutyDay) => (
+    <span className="strip-flags">
+      {askedOn(day.date) && <span className="flag flag-ask">cover wanted</span>}
+      {day.swapped && <span className="flag flag-swap">swapped</span>}
+      {doneOn(day.date) && <span className="flag flag-done">done</span>}
+      {finedOn(day.date) && <span className="flag flag-fined">$10</span>}
+    </span>
+  );
 
-        return (
+  const [tonight, tomorrow, ...rest] = days;
+
+  return (
+    <>
+      <div className="headline-days">
+        {[tonight, tomorrow].filter(Boolean).map((day, i) => (
+          <button
+            key={day.date}
+            className={`headline-day${day.date === todayKey ? ' is-today' : ''}`}
+            onClick={() => onPick(day.date)}
+            style={{ animationDelay: `${0.2 + i * 0.08}s` }}
+          >
+            <Avatar
+              rosterKey={seatOf(day.assignee)}
+              name={nameOf(day.assignee)}
+              url={photoOf(day.assignee)}
+              size={76}
+            />
+            <span className="tag">{dayLabel(day.date, todayKey)}</span>
+            <span className="headline-name">{nameOf(day.assignee)}</span>
+            {flags(day)}
+          </button>
+        ))}
+      </div>
+
+      <ul className="strip">
+        {rest.map((day, i) => (
           <li key={day.date}>
             <button
-              className={`strip-day${day.date === todayKey ? ' is-today' : ''}`}
+              className="strip-day"
               onClick={() => onPick(day.date)}
-              style={{ animationDelay: `${0.24 + i * 0.035}s` }}
+              style={{ animationDelay: `${0.36 + i * 0.04}s` }}
             >
               <span className="strip-when tag">{dayLabel(day.date, todayKey)}</span>
               <span className="strip-who">
@@ -38,20 +84,15 @@ export function DayStrip({ days, todayKey, nameOf, seatOf, photoOf, doneOn, fine
                   rosterKey={seatOf(day.assignee)}
                   name={nameOf(day.assignee)}
                   url={photoOf(day.assignee)}
-                  size={26}
+                  size={30}
                 />
                 {nameOf(day.assignee)}
               </span>
-
-              <span className="strip-flags">
-                {day.swapped && <span className="flag flag-swap">swapped</span>}
-                {done && <span className="flag flag-done">done</span>}
-                {fined && <span className="flag flag-fined">$10</span>}
-              </span>
+              {flags(day)}
             </button>
           </li>
-        );
-      })}
-    </ul>
+        ))}
+      </ul>
+    </>
   );
 }

@@ -25,7 +25,8 @@ import {
 import { buildStrip, dayLabel, planSwap } from '../lib/duty';
 import { toDateKey } from '../lib/rotation';
 
-const STRIP_DAYS = 14;
+// A week. The strip is computed from today, so it rolls forward by itself.
+const STRIP_DAYS = 7;
 
 export function Today() {
   const { userId, signOut } = useAuth();
@@ -357,13 +358,14 @@ export function Today() {
       )}
 
       <section className="stack-lg rise rise-3">
-        <p className="tag">The fortnight</p>
+        <p className="tag">This week</p>
         <DayStrip
           days={days}
           todayKey={todayKey}
           nameOf={nameOf}
           seatOf={seatOf}
           photoOf={photoOf}
+          askedOn={(date) => !!requestFor(date)}
           doneOn={(date) => !!completionFor(date)}
           finedOn={(date) => !!penaltyFor(date)}
           onPick={(date) => setPicked(date === picked ? null : date)}
