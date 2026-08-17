@@ -1,73 +1,79 @@
 # Gharbaar
 
-Split expenses and split chores, for a household or any group.
+घरबार, household. Six people, one kitchen, one ledger.
 
-- **Expenses** — log what someone paid, it divides equally across the group, and the
-  balances tab shows who owes whom plus the shortest set of transfers that settles up.
-- **Responsibilities** — pick who is in the rotation for a task and it assigns itself one
-  person per day, forever, with no scheduler. Any day can be swapped to someone else.
+- **Groceries and bills** get logged once and split six ways in integer cents, so
+  the shares always add back up to what was actually spent.
+- **Cooking and cleaning** rotate a day at a time. Whoever cooks that night also
+  cleans up, and somebody else confirms it was done. A missed night costs $10.
+- **Fines are kept apart from the shopping.** Money owed to the house is not the
+  same thing as money owed to whoever paid at the till, so the two never mix.
+- **Birthdays** announce themselves the day before.
 
-Runs on iOS, Android and web from one codebase: Expo (React Native) + Expo Router, with
-Supabase for Postgres, auth and row-level security.
+It runs in a browser and installs to a phone home screen as a PWA.
 
-## Setup
+## Running it
 
-Requires Node 20.19.4 or newer (React Native 0.85 asks for it; older 20.x mostly works
-but Metro will warn).
+Needs Node 20.19 or newer.
 
 ```sh
 npm install
+cp .env.example .env    # fill in from Supabase: Settings, API Keys
+npm run dev
 ```
 
-### Supabase
+Then open http://localhost:5173.
 
-Create a personal access token at supabase.com under Account → Access Tokens, then:
+The anon key belongs in the bundle and is not a secret. Row level security is
+what protects the data: every table is readable only by an account that has
+claimed one of the six roster seats.
 
-```sh
-export SUPABASE_ACCESS_TOKEN=sbp_...
-./scripts/setup-supabase.sh
-```
+## Supabase
 
-That creates the project, waits for it to boot, links this repo to it, applies
-`supabase/migrations/`, and writes `.env`. If you would rather point at a project you
-already have, skip the script and copy `.env.example` to `.env` yourself:
+The database is described by this repo, not by the dashboard.
 
 ```sh
-cp .env.example .env      # then fill in the URL and anon key
+npx supabase login
 npx supabase link --project-ref <ref>
-npx supabase db push
+npx supabase db push        # applies supabase/migrations/
+npx supabase config push    # applies supabase/config.toml
 ```
 
-### Run it
+Be careful with `config push`. Any key absent from `config.toml` is filled in
+with a CLI default rather than left alone, so it can change settings you never
+touched. Read the diff it prints.
 
-```sh
-npx expo start
-```
+## The six seats
 
-Then press `w` for web, or scan the QR code with Expo Go on a phone. The project is
-pinned to Expo SDK 54 precisely so the store build of Expo Go can run it — no development
-build needed.
+Signing up creates an account. It does not tell the app who you are. That
+happens on the next screen, where you claim one of six names, and the unique
+constraint on `profiles.roster_key` means only one account ever holds a name.
 
-## Manual smoke test
+Until a seat is claimed, an account can read its own profile row and nothing
+else. That is deliberate: the seat is the membership check every policy runs.
 
-There is no automated test suite; this is the checklist instead. Two accounts are needed,
-so run web in a normal window and a private window, or web plus a simulator.
+## Notifications on iPhone
 
-- [ ] Sign up as user A, then as user B.
-- [ ] A creates a group. It appears in A's list.
-- [ ] A opens Invite, generates a code, and B opens the link (or `/join/<code>`). B lands
-      in the group and both see 2 members.
-- [ ] A adds an expense. Both see it, and Balances shows one owing half and one owed half.
-- [ ] Add a second expense paid by B and confirm the balances net off correctly.
-- [ ] A creates a responsibility with both members. The assignee alternates day by day
-      down the 14-day list.
-- [ ] Mark a day done. Reload — it is still marked.
-- [ ] Swap a day to the other person. The assignee changes and is tagged "swapped".
-      Clear the swap and it returns to the computed person.
-- [ ] Confirm web and at least one of iOS/Android run without crashing.
+Web push on iOS works only for a PWA that has been added to the home screen,
+and only when launched from that icon. A Safari tab will never receive a
+notification no matter what permission it was granted. Four of the six phones
+here are iPhones, so this is a setup step, not a footnote: Share, then Add to
+Home Screen, then open it from the icon.
 
-## Notes
+Android and desktop have no such restriction.
 
-- No CI and no test suite, by design — see `CLAUDE.md`.
-- `.env` is gitignored. The anon key is safe in a client bundle; RLS is what protects the
-  data, and every table is scoped to active membership of the row's group.
+## Checking it by hand
+
+There is no test suite and no CI, by design. This is the checklist.
+
+- [ ] Sign up, then claim a seat. The name you took shows as claimed for
+      everybody else.
+- [ ] Try to claim a name somebody already holds. It is refused rather than
+      silently reassigned.
+- [ ] Log an expense. Every housemate sees it and the balances move.
+- [ ] Confirm somebody else's duty. Try to confirm your own, and watch the
+      database refuse it rather than the button merely being hidden.
+- [ ] Miss a night and take the $10. It lands in the fines column, not the
+      grocery column.
+- [ ] Swap a day. The two people trade, and clearing it puts both back.
+- [ ] Install to a home screen and receive a notification there.
