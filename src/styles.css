@@ -719,6 +719,137 @@ h2 {
   width: auto;
 }
 
+/* ---------------------------------------------------------------------------
+   Navigation
+   --------------------------------------------------------------------------- */
+
+.nav {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 26px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: rgba(2, 10, 17, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  align-self: flex-start;
+}
+
+.nav-link {
+  font-family: var(--body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  text-decoration: none;
+  padding: 8px 18px;
+  border-radius: 999px;
+  transition:
+    color 0.4s var(--ease-liquid),
+    background 0.4s var(--ease-liquid);
+}
+
+.nav-link.is-on {
+  color: var(--abyss-deep);
+  background: linear-gradient(150deg, #9ff5df, var(--aqua));
+}
+
+.nav-link:not(.is-on):hover {
+  color: var(--ink);
+  background: var(--glass-lift);
+}
+
+/* ---------------------------------------------------------------------------
+   Money
+   --------------------------------------------------------------------------- */
+
+/* The one question the ledger asks first, so it gets the whole width. */
+.ask {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+
+/* Fines sit apart from the shopping, and are coloured so nobody mistakes the
+   two. Netting a punishment against a grocery receipt would hide both. */
+.panel-fines {
+  border-color: rgba(255, 138, 107, 0.28);
+  background: rgba(255, 138, 107, 0.05);
+}
+
+.amount-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.amount-sign {
+  position: absolute;
+  left: 16px;
+  font-size: 1.5rem;
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+
+.amount-input {
+  font-size: 1.9rem;
+  padding-left: 38px;
+  letter-spacing: -0.04em;
+}
+
+/* Strip the browser's spinners. They are ugly and nobody nudges a bill up by
+   one cent at a time. */
+.amount-input::-webkit-outer-spin-button,
+.amount-input::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.amount-input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* A chosen person, in either the paid-by row or the split-between row. */
+.btn-quiet.is-on {
+  color: var(--aqua);
+  border-color: rgba(99, 230, 200, 0.55);
+  background: rgba(99, 230, 200, 0.1);
+}
+
+.expense-row {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr auto;
+  grid-template-areas:
+    'when what amount'
+    'when who  amount';
+  align-items: center;
+  gap: 2px 12px;
+  padding: 13px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--bend-sm);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.expense-row .strip-when {
+  grid-area: when;
+}
+
+.expense-row .strip-who {
+  grid-area: what;
+  font-size: 1rem;
+}
+
+.expense-meta {
+  grid-area: who;
+}
+
+.expense-amount {
+  grid-area: amount;
+  font-size: 1.05rem;
+  color: var(--aqua);
+}
+
 /* Destructive actions live down here in the quietest type on the screen, and
    ask a second time before doing anything. */
 .footer-row {
