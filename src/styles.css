@@ -159,9 +159,8 @@ body {
 
 /* ---------------------------------------------------------------------------
    Splash
-   The tide runs sideways rather than the house sinking, so the mark stays still
-   and the water moves through it. That reads as a place in water; a house
-   sliding under reads as a flood.
+   The water level is the progress bar. Everything below is timed to the same
+   2.2s so the mark, the type and the sound all finish together.
    --------------------------------------------------------------------------- */
 
 .splash {
@@ -173,55 +172,129 @@ body {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  background: radial-gradient(120% 90% at 50% 30%, #0b2537 0%, #04101a 60%, #020a11 100%);
-  transition: opacity 0.7s var(--ease-liquid), transform 0.7s var(--ease-liquid);
+  background: radial-gradient(120% 90% at 50% 32%, #0b2537 0%, #04101a 58%, #020a11 100%);
+  transition: opacity 0.65s var(--ease-liquid), transform 0.65s var(--ease-liquid);
 }
 
 .splash.is-leaving {
   opacity: 0;
-  transform: scale(1.06);
+  transform: scale(1.05);
   pointer-events: none;
 }
 
 .splash-mark {
-  width: clamp(108px, 34vw, 160px);
-  animation: surface 1s var(--ease-liquid) both;
+  width: clamp(120px, 38vw, 172px);
+  animation: surface 0.8s var(--ease-liquid) both;
 }
 
 .splash-mark svg {
   width: 100%;
   height: auto;
-  filter: drop-shadow(0 20px 44px rgba(99, 230, 200, 0.22));
+  filter: drop-shadow(0 22px 46px rgba(99, 230, 200, 0.24));
 }
 
-/* One wavelength is 32 units wide, so translating by exactly that loops
-   seamlessly however long it runs. */
-.splash-tide {
-  animation: tide 3.2s linear infinite;
+/* The level. Starts below the foundations at y=55, ends above the apex at
+   y=12, so the house goes from empty to full exactly once. */
+.sp-level {
+  animation: level 2.2s cubic-bezier(0.5, 0, 0.3, 1) forwards;
 }
 
-@keyframes tide {
+@keyframes level {
+  from {
+    transform: translateY(22px);
+  }
+  to {
+    transform: translateY(-23px);
+  }
+}
+
+/* One wavelength is 32 units, so translating by exactly that loops seamlessly
+   however long it runs. Nested inside the level so the surface keeps moving
+   while it climbs. */
+.sp-drift {
+  animation: drift 2.4s linear infinite;
+}
+
+@keyframes drift {
   to {
     transform: translateX(32px);
   }
 }
 
+.sp-bubble {
+  fill: rgba(255, 255, 255, 0.55);
+  animation: bubble 2.2s ease-in infinite;
+}
+
+.sp-bubble-1 { animation-delay: 0.25s; }
+.sp-bubble-2 { animation-delay: 0.8s; }
+.sp-bubble-3 { animation-delay: 1.25s; }
+.sp-bubble-4 { animation-delay: 1.7s; }
+
+@keyframes bubble {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(-42px);
+    opacity: 0;
+  }
+}
+
+/* The wordmark is a level gauge. A hard stop between white and aqua sits at the
+   waterline, and moving the oversized background upward drags that line through
+   the letters in step with the mark. */
 .splash-name {
   font-family: var(--display);
   font-weight: 800;
-  font-size: clamp(2rem, 9vw, 2.7rem);
+  font-size: clamp(2.1rem, 9.5vw, 2.9rem);
   letter-spacing: -0.045em;
-  margin: 14px 0 0;
-  background: linear-gradient(168deg, #ffffff 8%, var(--aqua) 62%, var(--aqua-deep) 100%);
+  margin: 16px 0 0;
+  background-image: linear-gradient(
+    to top,
+    var(--aqua-deep) 0%,
+    var(--aqua) 34%,
+    #9ff5df 49.6%,
+    #ffffff 50.4%,
+    #ffffff 100%
+  );
+  background-size: 100% 300%;
+  background-position: 0% 0%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: surface 1s var(--ease-liquid) 0.35s both;
+  animation:
+    surface 0.8s var(--ease-liquid) 0.25s both,
+    fill 2.2s cubic-bezier(0.5, 0, 0.3, 1) forwards;
+}
+
+@keyframes fill {
+  to {
+    background-position: 0% 100%;
+  }
 }
 
 .splash-sub {
-  margin: 0;
-  animation: surface 1s var(--ease-liquid) 0.55s both;
+  margin: 2px 0 0;
+  animation: surface 0.9s var(--ease-liquid) 0.5s both;
+}
+
+/* Reduced motion gets the finished state rather than a still frame of an empty
+   house, which would look like something failed to load. */
+@media (prefers-reduced-motion: reduce) {
+  .sp-level {
+    transform: translateY(-23px);
+  }
+  .splash-name {
+    background-position: 0% 100%;
+  }
+  .sp-bubble {
+    display: none;
+  }
 }
 
 /* ---------------------------------------------------------------------------
