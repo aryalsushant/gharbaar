@@ -5,6 +5,7 @@ import { Nav } from '../components/Nav';
 import { useAuth } from '../lib/auth';
 import {
   useAddGroceryItem,
+  useClearBasket,
   useGroceryItems,
   useHousehold,
   useRemoveGroceryItem,
@@ -30,6 +31,7 @@ export function List() {
   const add = useAddGroceryItem();
   const toggle = useToggleGroceryItem();
   const remove = useRemoveGroceryItem();
+  const clearBasket = useClearBasket();
 
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -133,10 +135,18 @@ export function List() {
       )}
 
       {basket.length > 0 && (
-        <p className="tag rise rise-4" style={{ marginTop: 22, letterSpacing: '0.08em' }}>
-          Log the shop on the Money tab when you are done. Ticked items clear themselves
-          once it is saved.
-        </p>
+        <div className="footer-row rise rise-4">
+          <span className="tag">
+            {basket.length} ticked off. Clearing them is how the list empties.
+          </span>
+          <button
+            className="link"
+            disabled={clearBasket.isPending}
+            onClick={() => clearBasket.mutate()}
+          >
+            {clearBasket.isPending ? 'Clearing' : 'Clear the ticked'}
+          </button>
+        </div>
       )}
     </div>
   );
