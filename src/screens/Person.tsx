@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { Avatar } from '../components/Avatar';
@@ -10,11 +10,18 @@ import {
   useExpenses,
   useHousehold,
   usePenalties,
+  useRecordSettlement,
   useResponsibilities,
+  useSettlements,
   useSplits,
 } from '../lib/db';
 
-type Entry = { date: string; kind: 'paid' | 'cooked' | 'signed' | 'fined'; text: string; amount?: number };
+type Entry = {
+  date: string;
+  kind: 'paid' | 'cooked' | 'signed' | 'fined' | 'settled';
+  text: string;
+  amount?: number;
+};
 
 export function Person() {
   const { id = '' } = useParams();
@@ -26,14 +33,19 @@ export function Person() {
   const penalties = usePenalties();
   const responsibilities = useResponsibilities();
   const completions = useCompletions(responsibilities.data?.[0]?.id);
+  const settlements = useSettlements();
+  const record = useRecordSettlement();
+
+  const [paid, setPaid] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const person = house.data?.find((p) => p.id === id);
   const nameOf = (who: string) => house.data?.find((p) => p.id === who)?.display_name ?? 'Someone';
 
   const memberIds = useMemo(() => (house.data ?? []).map((p) => p.id), [house.data]);
   const balances = useMemo(
-    () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds),
-    [expenses.data, splits.data, memberIds]
+    () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds, settlements.data ?? []),
+    [expenses.data, splits.data, memberIds, settlements.data]
   );
 
   const net = balances.find((b) => b.user_id === id)?.net ?? 0;
@@ -61,11 +73,11 @@ export function Person() {
   const finesTotal = fines.reduce((sum, p) => sum + Number(p.amount), 0);
   const cooked = (completions.data ?? []).filter((c) => c.user_id === id);
   const signedOff = (completions.data ?? []).filter((c) => c.marked_by === id);
-  const paid = (expenses.data ?? []).filter((e) => e.paid_by === id);
+  const paidExpenses = (expenses.data ?? []).filter((e) => e.paid_by === id);
 
   const activity = useMemo<Entry[]>(() => {
     const entries: Entry[] = [
-      ...paid.map((e) => ({
+      ...paidExpenses.map((e) => ({
         date: e.created_at.slice(0, 10),
         kind: 'paid' as const,
         text: e.description || 'Groceries',
@@ -83,9 +95,17 @@ export function Person() {
         text: p.reason || 'Missed a night',
         amount: Number(p.amount),
       })),
+      ...(settlements.data ?? [])
+        .filter((s) => s.from_user === id || s.to_user === id)
+        .map((s) => ({
+          date: s.settled_on,
+          kind: 'settled' as const,
+          text: s.from_user === id ? `Paid ${nameOf(s.to_user)}` : `Was paid by ${nameOf(s.from_user)}`,
+          amount: Number(s.amount),
+        })),
     ];
     return entries.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 25);
-  }, [paid, cooked, signedOff, fines, house.data]);
+  }, [paidExpenses, cooked, signedOff, fines, settlements.data, house.data]);
 
   if (!person) {
     return (
@@ -150,6 +170,51 @@ export function Person() {
             Nothing passes directly between you two in the current settle-up.
           </p>
         )}
+
+        {!isMe && (
+          <div style={{ marginTop: 18 }}>
+            <p className="tag">Did {person.display_name} pay you?</p>
+            {error && <p className="notice notice-bad" style={{ marginTop: 10 }}>{error}</p>}
+            <div className="row" style={{ marginTop: 10 }}>
+              <div className="amount-field" style={{ flex: 1 }}>
+                <span className="amount-sign figure" style={{ fontSize: '1rem', left: 14 }}>$</span>
+                <input
+                  className="input figure"
+                  style={{ paddingLeft: 30, fontSize: '1rem' }}
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  value={paid}
+                  onChange={(e) => setPaid(e.target.value)}
+                  placeholder={between && between.from === id ? between.amount.toFixed(2) : '0.00'}
+                />
+              </div>
+              <button
+                className="btn btn-small"
+                disabled={record.isPending || !(Number(paid) > 0)}
+                onClick={async () => {
+                  setError(null);
+                  try {
+                    await record.mutateAsync({
+                      fromUser: id,
+                      toUser: userId!,
+                      amount: Number(paid),
+                    });
+                    setPaid('');
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : 'Could not record that.');
+                  }
+                }}
+              >
+                Record it
+              </button>
+            </div>
+            <p className="tag" style={{ marginTop: 10, letterSpacing: '0.08em' }}>
+              Only you can log money paid to you, and part payments are fine.
+            </p>
+          </div>
+        )}
       </section>
 
       <section className="stat-row stack-lg rise rise-3">
@@ -158,7 +223,7 @@ export function Person() {
           <span className="tag">nights cooked</span>
         </div>
         <div className="stat">
-          <span className="figure stat-value">{paid.length}</span>
+          <span className="figure stat-value">{paidExpenses.length}</span>
           <span className="tag">times paid</span>
         </div>
         <div className="stat">

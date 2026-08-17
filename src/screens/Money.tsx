@@ -1,11 +1,18 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { Avatar } from '../components/Avatar';
 import { Nav } from '../components/Nav';
 import { useAuth } from '../lib/auth';
 import { computeBalances, formatMoney, settleUp } from '../lib/balances';
-import { useExpenses, useHousehold, usePenalties, useSplits } from '../lib/db';
+import {
+  useExpenses,
+  useHousehold,
+  usePenalties,
+  useRecordSettlement,
+  useSettlements,
+  useSplits,
+} from '../lib/db';
 
 export function Money() {
   const { userId } = useAuth();
@@ -13,6 +20,9 @@ export function Money() {
   const expenses = useExpenses();
   const splits = useSplits();
   const penalties = usePenalties();
+  const settlements = useSettlements();
+  const record = useRecordSettlement();
+  const [error, setError] = useState<string | null>(null);
 
   const personOf = (id: string) => house.data?.find((p) => p.id === id);
   const nameOf = (id: string) => personOf(id)?.display_name ?? 'Someone';
@@ -32,8 +42,8 @@ export function Money() {
   const memberIds = useMemo(() => (house.data ?? []).map((p) => p.id), [house.data]);
 
   const balances = useMemo(
-    () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds),
-    [expenses.data, splits.data, memberIds]
+    () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds, settlements.data ?? []),
+    [expenses.data, splits.data, memberIds, settlements.data]
   );
 
   const transfers = useMemo(() => settleUp(balances), [balances]);
@@ -91,16 +101,44 @@ export function Money() {
       {transfers.length > 0 && (
         <section className="panel stack-lg rise rise-3">
           <p className="tag">Settling up takes {transfers.length} transfer{transfers.length > 1 ? 's' : ''}</p>
+          {error && <p className="notice notice-bad">{error}</p>}
           <ul className="roster-list">
             {transfers.map((t, i) => (
               <li key={`${t.from}-${t.to}-${i}`}>
                 <span>
-                  {nameOf(t.from)} pays {nameOf(t.to)}
+                  {t.from === userId ? 'You pay' : `${nameOf(t.from)} pays`}{' '}
+                  {t.to === userId ? 'you' : nameOf(t.to)}
                 </span>
-                <span className="figure">{formatMoney(t.amount)}</span>
+                <span className="row" style={{ gap: 12 }}>
+                  <span className="figure">{formatMoney(t.amount)}</span>
+                  {t.to === userId && (
+                    <button
+                      className="btn btn-small"
+                      disabled={record.isPending}
+                      onClick={async () => {
+                        setError(null);
+                        try {
+                          await record.mutateAsync({
+                            fromUser: t.from,
+                            toUser: userId!,
+                            amount: t.amount,
+                          });
+                        } catch (err) {
+                          setError(err instanceof Error ? err.message : 'Could not record that.');
+                        }
+                      }}
+                    >
+                      Got it
+                    </button>
+                  )}
+                </span>
               </li>
             ))}
           </ul>
+          <p className="tag" style={{ marginTop: 12, letterSpacing: '0.08em' }}>
+            Only the person being paid can mark a transfer done, so nobody can clear a debt
+            by saying they settled it.
+          </p>
         </section>
       )}
 
