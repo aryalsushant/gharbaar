@@ -46,12 +46,18 @@ Deno.serve(async (request) => {
       exclude = [payer];
 
       // A flat's bill is not news to the other flat.
+      //
+      // Worked out from who lives there, not from the expense's splits. The
+      // trigger fires the moment the expense row lands and the client writes
+      // the splits immediately after, so reading them here finds nothing and
+      // every apartment bill would notify nobody at all.
       if (row.apartment) {
-        const { data: splits } = await supabase
-          .from('expense_splits')
-          .select('user_id')
-          .eq('expense_id', row.id as string);
-        audience = (splits ?? []).map((s) => s.user_id as string);
+        const { data: residents } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('apartment', row.apartment as string)
+          .not('roster_key', 'is', null);
+        audience = (residents ?? []).map((r) => r.id as string);
       }
       break;
     }
