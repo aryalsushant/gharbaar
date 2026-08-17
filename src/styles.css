@@ -159,141 +159,184 @@ body {
 
 /* ---------------------------------------------------------------------------
    Splash
-   The water level is the progress bar. Everything below is timed to the same
-   2.2s so the mark, the type and the sound all finish together.
+   Water climbs the whole screen and the mark is refracted through it, rather
+   than a progress bar drawn to look like a wave. Everything is timed to the
+   same 2.6s so the rise, the sound and the fade finish together.
    --------------------------------------------------------------------------- */
 
 .splash {
   position: fixed;
   inset: 0;
   z-index: 40;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  background: radial-gradient(120% 90% at 50% 32%, #0b2537 0%, #04101a 58%, #020a11 100%);
-  transition: opacity 0.65s var(--ease-liquid), transform 0.65s var(--ease-liquid);
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 34%, #0b2537 0%, #04101a 58%, #020a11 100%);
+  transition: opacity 0.7s var(--ease-liquid), transform 0.7s var(--ease-liquid);
 }
 
 .splash.is-leaving {
   opacity: 0;
-  transform: scale(1.05);
+  transform: scale(1.04);
   pointer-events: none;
 }
 
+.splash-core {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
 .splash-mark {
-  width: clamp(120px, 38vw, 172px);
-  animation: surface 0.8s var(--ease-liquid) both;
+  width: clamp(112px, 34vw, 158px);
+  animation: surface 0.9s var(--ease-liquid) both;
 }
 
 .splash-mark svg {
   width: 100%;
   height: auto;
-  filter: drop-shadow(0 22px 46px rgba(99, 230, 200, 0.24));
+  filter: drop-shadow(0 22px 46px rgba(99, 230, 200, 0.26));
 }
 
-/* The level. Starts below the foundations at y=55, ends above the apex at
-   y=12, so the house goes from empty to full exactly once. */
-.sp-level {
-  animation: level 2.2s cubic-bezier(0.5, 0, 0.3, 1) forwards;
-}
-
-@keyframes level {
-  from {
-    transform: translateY(22px);
-  }
-  to {
-    transform: translateY(-23px);
-  }
-}
-
-/* One wavelength is 32 units, so translating by exactly that loops seamlessly
-   however long it runs. Nested inside the level so the surface keeps moving
-   while it climbs. */
-.sp-drift {
-  animation: drift 2.4s linear infinite;
-}
-
-@keyframes drift {
-  to {
-    transform: translateX(32px);
-  }
-}
-
-.sp-bubble {
-  fill: rgba(255, 255, 255, 0.55);
-  animation: bubble 2.2s ease-in infinite;
-}
-
-.sp-bubble-1 { animation-delay: 0.25s; }
-.sp-bubble-2 { animation-delay: 0.8s; }
-.sp-bubble-3 { animation-delay: 1.25s; }
-.sp-bubble-4 { animation-delay: 1.7s; }
-
-@keyframes bubble {
-  0% {
-    transform: translateY(0);
-    opacity: 0;
-  }
-  15% {
-    opacity: 0.7;
-  }
-  100% {
-    transform: translateY(-42px);
-    opacity: 0;
-  }
-}
-
-/* The wordmark is a level gauge. A hard stop between white and aqua sits at the
-   waterline, and moving the oversized background upward drags that line through
-   the letters in step with the mark. */
 .splash-name {
   font-family: var(--display);
   font-weight: 800;
   font-size: clamp(2.1rem, 9.5vw, 2.9rem);
   letter-spacing: -0.045em;
   margin: 16px 0 0;
-  background-image: linear-gradient(
-    to top,
-    var(--aqua-deep) 0%,
-    var(--aqua) 34%,
-    #9ff5df 49.6%,
-    #ffffff 50.4%,
-    #ffffff 100%
-  );
-  background-size: 100% 300%;
-  background-position: 0% 0%;
+  background: linear-gradient(168deg, #ffffff 8%, var(--aqua) 62%, var(--aqua-deep) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation:
-    surface 0.8s var(--ease-liquid) 0.25s both,
-    fill 2.2s cubic-bezier(0.5, 0, 0.3, 1) forwards;
-}
-
-@keyframes fill {
-  to {
-    background-position: 0% 100%;
-  }
+  animation: surface 0.9s var(--ease-liquid) 0.3s both;
 }
 
 .splash-sub {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   animation: surface 0.9s var(--ease-liquid) 0.5s both;
 }
 
-/* Reduced motion gets the finished state rather than a still frame of an empty
-   house, which would look like something failed to load. */
+/* --- the flood ---
+   Height rather than transform, because the surface has to stay a fixed size
+   while the body grows underneath it. Ends past the top so the last of the
+   screen is properly under water rather than stopping at the edge. */
+
+.flood {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  animation: flood 2.2s cubic-bezier(0.45, 0, 0.25, 1) forwards;
+}
+
+@keyframes flood {
+  from {
+    height: 0;
+  }
+  to {
+    height: 118vh;
+  }
+}
+
+/* The glass. A real backdrop-filter, so the mark and the type behind it are
+   refracted rather than covered: blurred a little, pushed towards aqua, and
+   brightened, which is what looking through water actually does. */
+.flood-body {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  backdrop-filter: blur(3px) saturate(150%) brightness(1.06) hue-rotate(-6deg);
+  -webkit-backdrop-filter: blur(3px) saturate(150%) brightness(1.06) hue-rotate(-6deg);
+  background: linear-gradient(
+    to bottom,
+    rgba(79, 216, 207, 0.24) 0%,
+    rgba(36, 166, 160, 0.22) 45%,
+    rgba(10, 60, 84, 0.3) 100%
+  );
+  border-top: 2px solid rgba(159, 245, 223, 0.75);
+  box-shadow: 0 -18px 50px -18px rgba(99, 230, 200, 0.55);
+}
+
+/* Two waves at different speeds, so the top edge never resolves into one
+   repeating shape the eye can lock onto. */
+.flood-surface {
+  position: absolute;
+  left: -14%;
+  bottom: 100%;
+  width: 128%;
+  height: clamp(26px, 7vw, 44px);
+  overflow: visible;
+}
+
+.flood-wave {
+  transform-origin: center;
+}
+
+.flood-wave-back {
+  fill: rgba(36, 166, 160, 0.6);
+  animation: wave-back 4.6s linear infinite;
+}
+
+.flood-wave-front {
+  fill: rgba(99, 230, 200, 0.45);
+  animation: wave-front 3.1s linear infinite;
+}
+
+/* One wavelength is 64 units in this viewBox, so translating by exactly that
+   loops seamlessly however long it runs. */
+@keyframes wave-back {
+  to {
+    transform: translateX(-64px);
+  }
+}
+
+@keyframes wave-front {
+  to {
+    transform: translateX(64px);
+  }
+}
+
+.flood-bubble {
+  position: absolute;
+  bottom: -6%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 32% 30%,
+    rgba(255, 255, 255, 0.9),
+    rgba(255, 255, 255, 0.28) 55%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  animation: bubble-up 3.4s ease-in infinite;
+}
+
+@keyframes bubble-up {
+  0% {
+    transform: translate(0, 0) scale(0.7);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate(var(--drift, 0), -105vh) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Reduced motion gets the end state: submerged, still, no bubbles. A frozen
+   empty screen would look like something failed to load. */
 @media (prefers-reduced-motion: reduce) {
-  .sp-level {
-    transform: translateY(-23px);
+  .flood {
+    height: 118vh;
+    animation: none;
   }
-  .splash-name {
-    background-position: 0% 100%;
-  }
-  .sp-bubble {
-    display: none;
+  .flood-bubble,
+  .flood-wave {
+    animation: none;
   }
 }
 
