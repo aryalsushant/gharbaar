@@ -593,6 +593,21 @@ h2 {
     inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
+/* Someone needs help. Distinct from a fine and from a birthday: this one is a
+   question aimed at everybody, so it borrows the accent rather than a warning
+   colour. */
+.panel-ask {
+  border-color: rgba(99, 230, 200, 0.3);
+  background: rgba(99, 230, 200, 0.055);
+}
+
+.btn-small {
+  width: auto;
+  flex: none;
+  font-size: 0.85rem;
+  padding: 8px 16px;
+}
+
 .birthday {
   border-radius: var(--bend-sm);
   border: 1px solid rgba(255, 212, 138, 0.3);

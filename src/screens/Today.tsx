@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
+import { Avatar } from '../components/Avatar';
 import { BirthdayBanner } from '../components/BirthdayBanner';
 import { DayStrip } from '../components/DayStrip';
 import { Nav } from '../components/Nav';
@@ -7,19 +8,20 @@ import { useAuth } from '../lib/auth';
 import { birthdaysAround } from '../lib/birthdays';
 import {
   useApplySwap,
-  useClearOverride,
+  useCloseSwapRequest,
   useCompletions,
   useConfirmCompletion,
   useCreateResponsibility,
   useHousehold,
   useIssuePenalty,
-  usePenalties,
-  useResetRotation,
-  useResponsibilities,
-  useRotationMembers,
-  useSyncRotationMembers,
-  useRoster,
   useOverrides,
+  usePenalties,
+  useRequestSwap,
+  useResponsibilities,
+  useRoster,
+  useRotationMembers,
+  useSwapRequests,
+  useSyncRotationMembers,
 } from '../lib/db';
 import { buildStrip, dayLabel, planSwap } from '../lib/duty';
 import { toDateKey } from '../lib/rotation';
@@ -36,19 +38,19 @@ export function Today() {
   const members = useRotationMembers(duty?.id);
   const overrides = useOverrides(duty?.id);
   const completions = useCompletions(duty?.id);
+  const requests = useSwapRequests(duty?.id);
   const penalties = usePenalties();
 
   const createDuty = useCreateResponsibility();
+  const syncMembers = useSyncRotationMembers(duty?.id);
   const confirm = useConfirmCompletion(duty?.id);
   const applySwap = useApplySwap(duty?.id);
-  const clearOverride = useClearOverride(duty?.id);
+  const requestSwap = useRequestSwap(duty?.id);
+  const closeRequest = useCloseSwapRequest(duty?.id);
   const fine = useIssuePenalty();
-  const resetRotation = useResetRotation();
-  const syncMembers = useSyncRotationMembers(duty?.id);
 
   const [picked, setPicked] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [confirmingReset, setConfirmingReset] = useState(false);
 
   const todayKey = toDateKey(new Date());
 
@@ -56,6 +58,30 @@ export function Today() {
   const nameOf = (id: string | null) => personOf(id)?.display_name ?? (id ? 'Someone' : 'Nobody');
   const seatOf = (id: string | null) => personOf(id)?.roster_key ?? null;
   const photoOf = (id: string | null) => personOf(id)?.avatar_url ?? null;
+
+  // Roster order, always. Nobody gets to reorder the rota.
+  const houseInOrder = useMemo(
+    () =>
+      (roster.data ?? [])
+        .map((seat) => house.data?.find((p) => p.roster_key === seat.key))
+        .filter((p): p is NonNullable<typeof p> => !!p),
+    [roster.data, house.data]
+  );
+
+  /**
+   * Anyone holding a seat belongs in the rotation, so this happens by itself
+   * rather than waiting for somebody to press a button. Existing members keep
+   * their order, so nobody who has already cooked is moved back to the front,
+   * and the unique constraint on (responsibility, user) makes it safe when
+   * several phones notice at the same moment.
+   */
+  useEffect(() => {
+    if (!duty || !members.data || houseInOrder.length === 0) return;
+    if (syncMembers.isPending) return;
+    const known = new Set(members.data.map((m) => m.user_id));
+    if (houseInOrder.every((person) => known.has(person.id))) return;
+    syncMembers.mutate(houseInOrder.map((p) => p.id));
+  }, [duty, members.data, houseInOrder, syncMembers]);
 
   const days = useMemo(() => {
     if (!duty || !members.data) return [];
@@ -65,6 +91,7 @@ export function Today() {
   const tonight = days[0];
   const completionFor = (date: string) => completions.data?.find((c) => c.date === date);
   const penaltyFor = (date: string) => penalties.data?.find((p) => p.date === date);
+  const requestFor = (date: string) => requests.data?.find((r) => r.date === date);
 
   const notices = useMemo(
     () => birthdaysAround(house.data ?? [], todayKey),
@@ -80,7 +107,16 @@ export function Today() {
     }
   }
 
-  // --- first run: nobody has set up the rotation yet ------------------------
+  /** Taking somebody's night: apply the trade, then close the ask. */
+  function takeOver(date: string, requestId: string) {
+    const plan = planSwap(duty!, members.data ?? [], overrides.data ?? [], date, userId!);
+    if (!plan) return;
+    run(async () => {
+      await applySwap.mutateAsync(plan.rows);
+      await closeRequest.mutateAsync(requestId);
+      setPicked(null);
+    });
+  }
 
   if (responsibilities.isLoading || house.isLoading) {
     return (
@@ -90,18 +126,17 @@ export function Today() {
     );
   }
 
-  if (!duty) {
-    const order = (roster.data ?? [])
-      .map((seat) => house.data?.find((p) => p.roster_key === seat.key))
-      .filter((p): p is NonNullable<typeof p> => !!p);
+  // --- first run -----------------------------------------------------------
 
+  if (!duty) {
     return (
       <div className="centered">
         <header className="rise rise-1">
           <p className="tag">First run</p>
           <h1 className="wordmark">Start the rotation</h1>
           <p className="lede">
-            One person cooks and cleans each night, in roster order, starting today.
+            One person cooks and cleans each night, in roster order, starting today. Anyone
+            who takes a seat later joins the end of the order on their own.
           </p>
         </header>
 
@@ -110,10 +145,17 @@ export function Today() {
 
           <p className="tag">The order</p>
           <ol className="roster-list">
-            {order.map((person, i) => (
+            {houseInOrder.map((person) => (
               <li key={person.id}>
-                <span>{person.display_name}</span>
-                <span className="tag figure">{dayLabel(days[i]?.date ?? todayKey, todayKey)}</span>
+                <span className="faced">
+                  <Avatar
+                    rosterKey={person.roster_key}
+                    name={person.display_name}
+                    url={person.avatar_url}
+                    size={26}
+                  />
+                  {person.display_name}
+                </span>
               </li>
             ))}
           </ol>
@@ -121,26 +163,19 @@ export function Today() {
           <button
             className="btn"
             style={{ marginTop: 18 }}
-            disabled={order.length === 0 || createDuty.isPending}
+            disabled={houseInOrder.length === 0 || createDuty.isPending}
             onClick={() =>
               run(() =>
                 createDuty.mutateAsync({
                   name: 'Dinner',
                   startDate: todayKey,
-                  memberIds: order.map((p) => p.id),
+                  memberIds: houseInOrder.map((p) => p.id),
                 })
               )
             }
           >
             {createDuty.isPending ? 'Setting the rota' : 'Start it today'}
           </button>
-
-          {order.length < 2 && (
-            <p className="lede" style={{ maxWidth: 'none' }}>
-              Worth waiting until everyone has taken a seat, otherwise the rotation starts
-              with whoever is here and the order will not match the house.
-            </p>
-          )}
         </section>
       </div>
     );
@@ -153,14 +188,8 @@ export function Today() {
   const iAmCooking = tonight?.assignee === userId;
 
   const pickedDay = picked ? days.find((d) => d.date === picked) : null;
-
-  // Roster order, so anyone added lands in the same sequence as the seats.
-  const houseInOrder = (roster.data ?? [])
-    .map((seat) => house.data?.find((p) => p.roster_key === seat.key))
-    .filter((p): p is NonNullable<typeof p> => !!p);
-
-  const inRotation = new Set((members.data ?? []).map((m) => m.user_id));
-  const missing = houseInOrder.filter((person) => !inRotation.has(person.id));
+  const pickedRequest = pickedDay ? requestFor(pickedDay.date) : undefined;
+  const openRequests = (requests.data ?? []).filter((r) => r.date >= todayKey);
 
   return (
     <div className="centered wide">
@@ -187,10 +216,33 @@ export function Today() {
             Missed. <span className="figure">$10</span> charged by {nameOf(tonightFined.issued_by)}.
           </p>
         ) : iAmCooking ? (
-          <p className="lede" style={{ maxWidth: 'none', margin: 0 }}>
-            Your night. One of the others confirms it once it is done, and you cannot sign
-            off your own, so do not go looking for the button.
-          </p>
+          <>
+            <p className="lede" style={{ maxWidth: 'none', marginTop: 0 }}>
+              Your night. One of the others signs it off, so there is no button here for you.
+            </p>
+            {tonight && requestFor(tonight.date) ? (
+              <p className="notice notice-bad" style={{ margin: '14px 0 0' }}>
+                You have asked for cover. Nobody has taken it yet.
+              </p>
+            ) : (
+              <button
+                className="btn btn-quiet"
+                style={{ marginTop: 14 }}
+                disabled={requestSwap.isPending}
+                onClick={() =>
+                  run(() =>
+                    requestSwap.mutateAsync({
+                      date: tonight!.date,
+                      requestedBy: userId!,
+                      note: '',
+                    })
+                  )
+                }
+              >
+                I cannot cook tonight
+              </button>
+            )}
+          </>
         ) : (
           <>
             <p className="tag">Did {nameOf(tonight?.assignee ?? null)} cook and clean?</p>
@@ -232,26 +284,49 @@ export function Today() {
         )}
       </section>
 
-      {missing.length > 0 && (
-        <section className="panel stack-lg rise rise-3">
-          <p className="tag">Not in the rotation yet</p>
-          <p className="lede" style={{ maxWidth: 'none' }}>
-            {missing.map((p) => p.display_name).join(', ')}{' '}
-            {missing.length === 1 ? 'has' : 'have'} taken a seat but{' '}
-            {missing.length === 1 ? 'is' : 'are'} not cooking. Adding{' '}
-            {missing.length === 1 ? 'them' : 'them'} keeps every swap and sign-off already
-            made.
+      {/* Whoever is asking for cover, and the one tap that answers them. */}
+      {openRequests.length > 0 && (
+        <section className="panel panel-ask stack-lg rise rise-3">
+          <p className="tag">Asking for cover</p>
+          <ul className="roster-list">
+            {openRequests.map((request) => (
+              <li key={request.id}>
+                <span className="faced">
+                  <Avatar
+                    rosterKey={seatOf(request.requested_by)}
+                    name={nameOf(request.requested_by)}
+                    url={photoOf(request.requested_by)}
+                    size={26}
+                  />
+                  <span>
+                    {nameOf(request.requested_by)} cannot cook{' '}
+                    <span className="figure">{dayLabel(request.date, todayKey).toLowerCase()}</span>
+                  </span>
+                </span>
+
+                {request.requested_by === userId ? (
+                  <button
+                    className="link"
+                    disabled={closeRequest.isPending}
+                    onClick={() => run(() => closeRequest.mutateAsync(request.id))}
+                  >
+                    I can after all
+                  </button>
+                ) : (
+                  <button
+                    className="btn btn-small"
+                    disabled={applySwap.isPending || closeRequest.isPending}
+                    onClick={() => takeOver(request.date, request.id)}
+                  >
+                    I will
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p className="tag" style={{ marginTop: 12, letterSpacing: '0.08em' }}>
+            Taking a night is a trade. They pick up your next turn instead.
           </p>
-          <button
-            className="btn"
-            style={{ marginTop: 14 }}
-            disabled={syncMembers.isPending}
-            onClick={() => run(() => syncMembers.mutateAsync(houseInOrder.map((p) => p.id)))}
-          >
-            {syncMembers.isPending
-              ? 'Adding'
-              : `Add ${missing.length === 1 ? missing[0].display_name : `all ${missing.length}`} to the rotation`}
-          </button>
         </section>
       )}
 
@@ -281,85 +356,52 @@ export function Today() {
             </button>
           </div>
 
-          <p className="tag" style={{ marginTop: 16 }}>
-            Someone else covers, and takes this day in trade
-          </p>
-
-          <div className="cover-choices">
-            {house.data
-              ?.filter((person) => person.id !== pickedDay.assignee)
-              .map((person) => (
-                <button
-                  key={person.id}
-                  className="btn btn-quiet"
-                  disabled={applySwap.isPending}
-                  onClick={() => {
-                    const plan = planSwap(
-                      duty,
-                      members.data ?? [],
-                      overrides.data ?? [],
-                      pickedDay.date,
-                      person.id
-                    );
-                    if (!plan) return;
-                    run(async () => {
-                      await applySwap.mutateAsync(plan.rows);
-                      setPicked(null);
-                    });
-                  }}
-                >
-                  {person.display_name}
-                </button>
-              ))}
-          </div>
-
-          {pickedDay.swapped && (
+          {pickedRequest ? (
+            pickedDay.assignee === userId ? (
+              <p className="lede" style={{ maxWidth: 'none' }}>
+                You have asked for cover on this night. It stays in the list above until
+                somebody takes it.
+              </p>
+            ) : (
+              <button
+                className="btn"
+                style={{ marginTop: 14 }}
+                disabled={applySwap.isPending}
+                onClick={() => takeOver(pickedDay.date, pickedRequest.id)}
+              >
+                I will take this night
+              </button>
+            )
+          ) : pickedDay.assignee === userId ? (
             <button
               className="btn btn-quiet"
-              style={{ marginTop: 12 }}
-              disabled={clearOverride.isPending}
-              onClick={() => run(() => clearOverride.mutateAsync(pickedDay.date))}
+              style={{ marginTop: 14 }}
+              disabled={requestSwap.isPending}
+              onClick={() =>
+                run(() =>
+                  requestSwap.mutateAsync({
+                    date: pickedDay.date,
+                    requestedBy: userId!,
+                    note: '',
+                  })
+                )
+              }
             >
-              Undo the swap on this day
+              I cannot cook this night
             </button>
+          ) : (
+            <p className="lede" style={{ maxWidth: 'none' }}>
+              Only {nameOf(pickedDay.assignee)} can give this night away. Nobody gets
+              volunteered.
+            </p>
           )}
         </section>
       )}
 
       <footer className="rise rise-5 footer-row">
-        {confirmingReset ? (
-          <>
-            <span className="tag">
-              Last resort. Wipes the order, the swaps and every sign-off. Fines stay owed,
-              and anyone in the house can do this.
-            </span>
-            <button
-              className="link link-danger"
-              disabled={resetRotation.isPending}
-              onClick={() =>
-                run(async () => {
-                  await resetRotation.mutateAsync(duty.id);
-                  setConfirmingReset(false);
-                  setPicked(null);
-                })
-              }
-            >
-              Yes, restart it
-            </button>
-            <button className="link" onClick={() => setConfirmingReset(false)}>
-              Keep it
-            </button>
-          </>
-        ) : (
-          <>
-            <button className="link" onClick={() => setConfirmingReset(true)}>
-              Restart the rotation
-            </button>
-            <button className="link" onClick={() => signOut()}>
-              Sign out
-            </button>
-          </>
-        )}
+        <button className="link" onClick={() => signOut()}>
+          Sign out
+        </button>
       </footer>
     </div>
   );
