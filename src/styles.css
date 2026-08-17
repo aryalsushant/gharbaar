@@ -590,6 +590,32 @@ h2 {
 }
 
 /* Not an error and not a success: something to do before continuing. */
+/* Sits under the sign-off, quiet. It should be findable, not inviting. */
+.charge-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 14px;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.charge-link span {
+  transition: transform 0.4s var(--ease-liquid);
+}
+
+.charge-link:hover {
+  color: var(--coral);
+  border-bottom-color: var(--coral);
+}
+
+.charge-link:hover span {
+  transform: translateX(4px);
+}
+
 .notice-warn {
   color: var(--amber);
   background: rgba(255, 212, 138, 0.08);
