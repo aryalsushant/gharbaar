@@ -668,6 +668,9 @@ h2 {
 }
 
 .strip-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-family: var(--display);
   font-weight: 600;
   font-size: 1.05rem;
@@ -717,6 +720,48 @@ h2 {
 
 .cover-choices .btn {
   width: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Faces
+   Photos arrive one at a time as people send them, so every one of these has
+   to look deliberate whether the image is there or not.
+   --------------------------------------------------------------------------- */
+
+.avatar {
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--hairline-bright);
+  background: rgba(2, 10, 17, 0.5);
+}
+
+.avatar-initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.faced {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* The face on the confirm step, big enough to actually recognise somebody,
+   ringed so it reads as a portrait rather than a floating cut-out. */
+.claim-face {
+  margin: 4px 0 14px;
+}
+
+.claim-face .avatar {
+  border-width: 2px;
+  border-color: rgba(99, 230, 200, 0.4);
+  box-shadow: 0 18px 40px -18px var(--aqua-glow);
 }
 
 /* ---------------------------------------------------------------------------

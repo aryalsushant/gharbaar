@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 
+import { Avatar } from '../components/Avatar';
 import { useAuth } from '../lib/auth';
 import { useClaimIdentity, useRoster } from '../lib/db';
 
@@ -57,6 +58,9 @@ export function ClaimSeat() {
       <div className="centered">
         <header className="rise rise-1">
           <p className="tag">Confirm</p>
+          <div className="claim-face">
+            <Avatar rosterKey={chosen.key} name={chosen.display_name} size={96} />
+          </div>
           <h1 className="wordmark">{chosen.display_name}?</h1>
           <p className="lede">Once you take this seat it is yours, so make sure it is you.</p>
         </header>
@@ -112,6 +116,7 @@ export function ClaimSeat() {
             onClick={() => setPicked(seat.key)}
             style={{ animationDelay: `${0.2 + i * 0.07}s` }}
           >
+            <Avatar rosterKey={seat.key} name={seat.display_name} size={40} />
             <span className="seat-name">{seat.display_name}</span>
             <span className="tag">{seat.claimed ? 'taken' : 'free'}</span>
           </button>

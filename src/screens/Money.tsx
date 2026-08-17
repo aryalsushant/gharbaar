@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 
+import { Avatar } from '../components/Avatar';
 import { Nav } from '../components/Nav';
 import { useAuth } from '../lib/auth';
 import { computeBalances, formatMoney, settleUp } from '../lib/balances';
@@ -13,8 +14,20 @@ export function Money() {
   const splits = useSplits();
   const penalties = usePenalties();
 
-  const nameOf = (id: string) =>
-    house.data?.find((p) => p.id === id)?.display_name ?? 'Someone';
+  const personOf = (id: string) => house.data?.find((p) => p.id === id);
+  const nameOf = (id: string) => personOf(id)?.display_name ?? 'Someone';
+
+  const facedName = (id: string) => (
+    <span className="faced">
+      <Avatar
+        rosterKey={personOf(id)?.roster_key ?? null}
+        name={nameOf(id)}
+        url={personOf(id)?.avatar_url}
+        size={26}
+      />
+      {nameOf(id)}
+    </span>
+  );
 
   const memberIds = useMemo(() => (house.data ?? []).map((p) => p.id), [house.data]);
 
@@ -99,7 +112,7 @@ export function Money() {
             .sort((a, b) => b.net - a.net)
             .map((balance) => (
               <li key={balance.user_id}>
-                <span>{nameOf(balance.user_id)}</span>
+                {facedName(balance.user_id)}
                 <span
                   className="figure"
                   style={{
@@ -128,7 +141,7 @@ export function Money() {
               .sort((a, b) => b[1] - a[1])
               .map(([personId, amount]) => (
                 <li key={personId}>
-                  <span>{nameOf(personId)}</span>
+                  {facedName(personId)}
                   <span className="figure" style={{ color: 'var(--coral)' }}>
                     {formatMoney(amount)}
                   </span>

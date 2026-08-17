@@ -50,8 +50,10 @@ export function Today() {
 
   const todayKey = toDateKey(new Date());
 
-  const nameOf = (id: string | null) =>
-    id ? (house.data?.find((p) => p.id === id)?.display_name ?? 'Someone') : 'Nobody';
+  const personOf = (id: string | null) => (id ? house.data?.find((p) => p.id === id) : undefined);
+  const nameOf = (id: string | null) => personOf(id)?.display_name ?? (id ? 'Someone' : 'Nobody');
+  const seatOf = (id: string | null) => personOf(id)?.roster_key ?? null;
+  const photoOf = (id: string | null) => personOf(id)?.avatar_url ?? null;
 
   const days = useMemo(() => {
     if (!duty || !members.data) return [];
@@ -226,6 +228,8 @@ export function Today() {
           days={days}
           todayKey={todayKey}
           nameOf={nameOf}
+          seatOf={seatOf}
+          photoOf={photoOf}
           doneOn={(date) => !!completionFor(date)}
           finedOn={(date) => !!penaltyFor(date)}
           onPick={(date) => setPicked(date === picked ? null : date)}
