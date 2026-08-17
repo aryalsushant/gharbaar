@@ -88,9 +88,12 @@ export function Today() {
    * index on responsibilities.name decides it: the losers fail and re-read
    * rather than creating a second Dinner.
    */
+  const seatsTotal = roster.data?.length ?? 6;
+  const everybodyIn = houseInOrder.length >= seatsTotal;
+
   useEffect(() => {
     if (responsibilities.isLoading || duty) return;
-    if (houseInOrder.length === 0 || createDuty.isPending) return;
+    if (!everybodyIn || createDuty.isPending) return;
     createDuty.mutate(
       {
         name: 'Dinner',
@@ -99,7 +102,7 @@ export function Today() {
       },
       { onError: () => void responsibilities.refetch() }
     );
-  }, [responsibilities, duty, houseInOrder, createDuty, todayKey]);
+  }, [responsibilities, duty, houseInOrder, everybodyIn, createDuty, todayKey]);
 
   const days = useMemo(() => {
     if (!duty || !members.data) return [];
@@ -140,9 +143,68 @@ export function Today() {
   }
 
   if (!duty) {
+    const waiting = (roster.data ?? []).filter(
+      (seat) => !houseInOrder.some((person) => person.roster_key === seat.key)
+    );
+
     return (
-      <div className="centered">
-        <p className="tag rise rise-1">Opening the kitchen</p>
+      <div className="centered wide">
+        <Nav />
+
+        <header className="rise rise-1">
+          <p className="tag figure">
+            {houseInOrder.length} of {seatsTotal} in
+          </p>
+          <h1 className="wordmark">
+            {everybodyIn ? 'Opening the kitchen' : 'Waiting for the house'}
+          </h1>
+          <p className="lede">
+            The rota starts once everyone has a seat, so the order matches the house
+            instead of whoever arrived first.
+          </p>
+        </header>
+
+        <section className="panel stack-lg rise rise-2">
+          <p className="tag">Here</p>
+          <ul className="roster-list">
+            {houseInOrder.map((person) => (
+              <li key={person.id}>
+                <span className="faced">
+                  <Avatar
+                    rosterKey={person.roster_key}
+                    name={person.display_name}
+                    url={person.avatar_url}
+                    size={26}
+                  />
+                  {person.display_name}
+                </span>
+                <span className="flag flag-done">in</span>
+              </li>
+            ))}
+          </ul>
+
+          {waiting.length > 0 && (
+            <>
+              <p className="tag" style={{ marginTop: 18 }}>Still to join</p>
+              <ul className="roster-list">
+                {waiting.map((seat) => (
+                  <li key={seat.key}>
+                    <span className="faced" style={{ opacity: 0.55 }}>
+                      <Avatar rosterKey={seat.key} name={seat.display_name} size={26} />
+                      {seat.display_name}
+                    </span>
+                    <span className="tag">waiting</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+
+        <p className="lede rise rise-3" style={{ maxWidth: 'none', marginTop: 20 }}>
+          The ledger works now. Log groceries, split them, settle up. Only the cooking
+          rota is waiting.
+        </p>
       </div>
     );
   }
@@ -169,9 +231,8 @@ export function Today() {
         <p className="lede">Whoever cooks also cleans. Someone else signs it off.</p>
       </header>
 
-      {error && <p className="notice notice-bad rise rise-2">{error}</p>}
-
       <section className="panel stack-lg rise rise-2">
+        {error && <p className="notice notice-bad">{error}</p>}
         {tonightDone ? (
           <p className="notice notice-good" style={{ marginBottom: 0 }}>
             Signed off by {nameOf(tonightDone.marked_by)}.
