@@ -5,6 +5,7 @@ import { Avatar } from '../components/Avatar';
 import { Nav } from '../components/Nav';
 import { useAuth } from '../lib/auth';
 import { computeBalances, formatMoney, settleUp } from '../lib/balances';
+import { mediumDate } from '../lib/dates';
 import {
   useCompletions,
   useExpenses,
@@ -231,7 +232,7 @@ export function Person() {
             {activity.map((entry, i) => (
               <li key={`${entry.kind}-${entry.date}-${i}`}>
                 <div className="expense-row">
-                  <span className="strip-when tag figure">{entry.date}</span>
+                  <span className="strip-when tag">{mediumDate(entry.date)}</span>
                   <span className="strip-who">{entry.text}</span>
                   <span className="expense-meta tag">{entry.kind}</span>
                   {entry.amount !== undefined && (

@@ -96,3 +96,41 @@ export async function household(supabase: SupabaseClient) {
 }
 
 export const money = (amount: number | string) => `$${Number(amount).toFixed(2)}`;
+
+/**
+ * Wednesday 19th August, rather than 2026-08-19.
+ *
+ * A notification is one line on a lock screen with no other context, so the
+ * weekday earns its place: "Wednesday 19th August" answers "is that tonight?"
+ * and a machine date does not.
+ *
+ * Duplicated from the app's src/lib/dates.ts rather than imported, because Edge
+ * Functions run on Deno and cannot reach into the Vite bundle. Keep the two in
+ * step if the format ever changes.
+ */
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function ordinal(day: number): string {
+  if (day >= 11 && day <= 13) return `${day}th`;
+  switch (day % 10) {
+    case 1: return `${day}st`;
+    case 2: return `${day}nd`;
+    case 3: return `${day}rd`;
+    default: return `${day}th`;
+  }
+}
+
+export function longDate(key: string): string {
+  const [y, m, d] = key.split('-').map(Number);
+  const weekday = new Date(y, m - 1, d).getDay();
+  return `${DAYS[weekday]} ${ordinal(d)} ${MONTHS[m - 1]}`;
+}
+
+/** "tonight" when it is today, otherwise the date, so a reminder reads naturally. */
+export function whenPhrase(key: string, todayKey: string): string {
+  return key === todayKey ? 'tonight' : longDate(key);
+}

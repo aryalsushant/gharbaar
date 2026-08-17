@@ -20,6 +20,7 @@ import {
   useSwapRequests,
   useSyncRotationMembers,
 } from '../lib/db';
+import { longDate } from '../lib/dates';
 import { buildStrip, dayLabel, planSwap } from '../lib/duty';
 import { toDateKey } from '../lib/rotation';
 
@@ -219,7 +220,7 @@ export function Today() {
       <Nav />
 
       <header className="rise rise-1">
-        <p className="tag figure">{todayKey}</p>
+        <p className="tag">{longDate(todayKey)}</p>
         <h1 className="wordmark">
           {iAmCooking ? 'You cook tonight' : `${nameOf(tonight?.assignee ?? null)} cooks tonight`}
         </h1>

@@ -1,3 +1,4 @@
+import { shortDate } from './dates';
 import {
   dateRange,
   getAssignee,
@@ -89,16 +90,10 @@ export function planSwap(
   };
 }
 
-/** Human day label: Today, Tomorrow, or a weekday plus date. */
+/** Today, Tomorrow, or Wed 19th Aug. */
 export function dayLabel(dateKey: string, todayKey: string): string {
   const [tomorrow] = dateRange(todayKey, 2).slice(1);
   if (dateKey === todayKey) return 'Today';
   if (dateKey === tomorrow) return 'Tomorrow';
-
-  const [y, m, d] = dateKey.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
+  return shortDate(dateKey);
 }

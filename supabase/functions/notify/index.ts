@@ -1,4 +1,13 @@
-import { authorised, household, money, pushTo, serviceClient, type Message } from '../_shared/push.ts';
+import {
+  authorised,
+  household,
+  longDate,
+  money,
+  pushTo,
+  serviceClient,
+  whenPhrase,
+  type Message,
+} from '../_shared/push.ts';
 
 /**
  * Tells the house that something happened, the moment it happens.
@@ -23,6 +32,14 @@ Deno.serve(async (request) => {
 
   const { kind, row } = (await request.json()) as Payload;
   const supabase = serviceClient();
+
+  // The house is in Central time, and "tonight" has to mean tonight there.
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Chicago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
 
   const people = await household(supabase);
   const nameOf = (id: unknown) =>
@@ -81,8 +98,8 @@ Deno.serve(async (request) => {
     case 'swap_request': {
       const asker = row.requested_by as string;
       message = {
-        title: `${nameOf(asker)} cannot cook`,
-        body: `${row.date}. Tap if you can take it.`,
+        title: `${nameOf(asker)} cannot cook ${whenPhrase(row.date as string, today)}`,
+        body: 'Tap if you can take it. They pick up your next turn instead.',
         url: '/today',
         tag: `cover-${row.date}`,
       };
@@ -93,10 +110,10 @@ Deno.serve(async (request) => {
     case 'swap_taken': {
       const taker = row.user_id as string;
       message = {
-        title: `${nameOf(taker)} took a night`,
-        body: `Covering ${row.date}. The rota has shifted.`,
+        title: `${nameOf(taker)} is cooking ${whenPhrase(row.date as string, today)}`,
+        body: 'They covered a night, so the rota has shifted.',
         url: '/today',
-        tag: `cover-${row.date}`,
+        tag: `taken-${row.date}`,
       };
       exclude = [taker];
       break;
