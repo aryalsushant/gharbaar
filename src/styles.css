@@ -732,8 +732,12 @@ h2 {
    The board
    --------------------------------------------------------------------------- */
 
+/* Content pages start at the top. Vertical centering belongs to the way in,
+   where there is one thing to look at, and it makes every other screen drift
+   down or up depending on how much happens to be on it. */
 .centered.wide {
   max-width: 34rem;
+  justify-content: flex-start;
 }
 
 /* Fines get their own button weight. Charging somebody $10 should not look
