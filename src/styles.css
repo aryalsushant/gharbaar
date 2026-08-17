@@ -575,6 +575,150 @@ h2 {
   border-bottom: none;
 }
 
+/* ---------------------------------------------------------------------------
+   The board
+   --------------------------------------------------------------------------- */
+
+.centered.wide {
+  max-width: 34rem;
+}
+
+/* Fines get their own button weight. Charging somebody $10 should not look
+   like the same gesture as saying well done. */
+.btn-danger {
+  color: #2a0d06;
+  background: linear-gradient(150deg, #ffb59d 0%, var(--coral) 55%, #e0603f 100%);
+  box-shadow:
+    0 14px 34px -16px rgba(255, 138, 107, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.birthday {
+  border-radius: var(--bend-sm);
+  border: 1px solid rgba(255, 212, 138, 0.3);
+  background: rgba(255, 212, 138, 0.08);
+  color: var(--amber);
+  padding: 11px 14px;
+  margin-bottom: 18px;
+  font-size: 0.94rem;
+}
+
+.birthday p {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.birthday p + p {
+  margin-top: 5px;
+}
+
+.birthday strong {
+  font-family: var(--display);
+  font-weight: 600;
+}
+
+.birthday-mark {
+  color: var(--amber);
+}
+
+/* --- the fortnight strip --- */
+
+.strip {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.strip-day {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 7.5rem 1fr auto;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  padding: 13px 16px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--hairline);
+  border-radius: var(--bend-sm);
+  animation: surface 0.8s var(--ease-liquid) both;
+  transition:
+    background 0.4s var(--ease-liquid),
+    border-color 0.4s var(--ease-liquid),
+    transform 0.4s var(--ease-liquid);
+}
+
+.strip-day:hover {
+  background: var(--glass-lift);
+  border-color: var(--hairline-bright);
+  transform: translateX(3px);
+}
+
+/* Tonight is the only row that gets the accent, so the eye lands on it before
+   reading anything. */
+.strip-day.is-today {
+  border-color: rgba(99, 230, 200, 0.45);
+  background: rgba(99, 230, 200, 0.07);
+}
+
+.strip-who {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: -0.015em;
+}
+
+.strip-flags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.flag {
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid;
+}
+
+.flag-swap {
+  color: var(--ink-soft);
+  border-color: var(--hairline-bright);
+}
+
+.flag-done {
+  color: var(--aqua);
+  border-color: rgba(99, 230, 200, 0.4);
+  background: rgba(99, 230, 200, 0.09);
+}
+
+.flag-fined {
+  color: var(--coral);
+  border-color: rgba(255, 138, 107, 0.4);
+  background: rgba(255, 138, 107, 0.09);
+}
+
+.cover-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 9px;
+  margin-top: 10px;
+}
+
+.cover-choices .btn {
+  width: auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
