@@ -35,10 +35,13 @@ const IMAGE = /\.(jpe?g|png|webp|heic)$/i;
  *           trim cannot see as borders.
  *   zoom:   crop tighter than the square. 1.5 keeps two thirds of the frame,
  *           for photos taken from across a room.
+ *   focus:  where the tighter crop sits, 0 to 1. Only applies with zoom.
+ *           Defaults to x 0.5, y 0.3, since heads sit above the middle of a
+ *           portrait and a centred window shaves the top of the head off.
  */
 const TWEAKS = {
-  // Shot from a distance, so the face lands small in a plain square crop.
-  bipul: { zoom: 1.5 },
+  // Shot from a distance and standing left of centre.
+  bipul: { zoom: 1.5, focus: { x: 0.1, y: 0.26 } },
 };
 
 await mkdir(BACKUP, { recursive: true });
@@ -110,12 +113,11 @@ for (const key of KEYS) {
     .resize(box, box, { fit: 'cover', position: 'attention' });
 
   if (zoom > 1) {
-    // Bias upward: heads sit above the middle of a portrait, so a centred
-    // extract shaves the top of someone's head off.
     const excess = box - SIZE;
+    const focus = tweak.focus ?? { x: 0.5, y: 0.3 };
     pipeline = sharp(await pipeline.toBuffer()).extract({
-      left: Math.round(excess / 2),
-      top: Math.round(excess * 0.3),
+      left: Math.min(excess, Math.max(0, Math.round(excess * focus.x))),
+      top: Math.min(excess, Math.max(0, Math.round(excess * focus.y))),
       width: SIZE,
       height: SIZE,
     });
