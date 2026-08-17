@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { BirthdayBanner } from '../components/BirthdayBanner';
 import { DayStrip } from '../components/DayStrip';
+import { Nav } from '../components/Nav';
 import { useAuth } from '../lib/auth';
 import { birthdaysAround } from '../lib/birthdays';
 import {
@@ -151,6 +152,7 @@ export function Today() {
 
   return (
     <div className="centered wide">
+      <Nav />
       <BirthdayBanner notices={notices} />
 
       <header className="rise rise-1">
