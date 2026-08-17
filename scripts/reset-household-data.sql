@@ -22,9 +22,7 @@ delete from public.expenses;
 delete from public.penalties;
 
 -- Free every seat. Accounts survive; they simply stop being anybody.
-update public.profiles
-set roster_key = null,
-    date_of_birth = null;
+update public.profiles set roster_key = null;
 
 commit;
 
