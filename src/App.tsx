@@ -6,6 +6,8 @@ import { useProfile } from './lib/db';
 import { AddExpense } from './screens/AddExpense';
 import { ClaimSeat } from './screens/ClaimSeat';
 import { Money } from './screens/Money';
+import { People } from './screens/People';
+import { Person } from './screens/Person';
 import { SignIn } from './screens/SignIn';
 import { SignUp } from './screens/SignUp';
 import { Today } from './screens/Today';
@@ -50,6 +52,8 @@ export default function App() {
             <Route path="/today" element={<Today />} />
             <Route path="/money" element={<Money />} />
             <Route path="/money/add" element={<AddExpense />} />
+            <Route path="/house" element={<People />} />
+            <Route path="/house/:id" element={<Person />} />
             <Route path="*" element={<Navigate to="/today" replace />} />
           </Routes>
         )}

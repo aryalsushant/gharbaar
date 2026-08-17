@@ -18,7 +18,7 @@ export function Money() {
   const nameOf = (id: string) => personOf(id)?.display_name ?? 'Someone';
 
   const facedName = (id: string) => (
-    <span className="faced">
+    <Link className="faced faced-link" to={`/house/${id}`}>
       <Avatar
         rosterKey={personOf(id)?.roster_key ?? null}
         name={nameOf(id)}
@@ -26,7 +26,7 @@ export function Money() {
         size={26}
       />
       {nameOf(id)}
-    </span>
+    </Link>
   );
 
   const memberIds = useMemo(() => (house.data ?? []).map((p) => p.id), [house.data]);

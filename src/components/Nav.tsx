@@ -1,8 +1,9 @@
 import { NavLink } from 'react-router-dom';
 
 /**
- * Two halves of the house, and only two. A household app that grows a five tab
- * bar has stopped being about the household.
+ * What the house is: tonight, the money, and the people. Three is the ceiling.
+ * A household app that grows a five tab bar has stopped being about the
+ * household.
  */
 export function Nav() {
   return (
@@ -12,6 +13,9 @@ export function Nav() {
       </NavLink>
       <NavLink to="/money" className={({ isActive }) => (isActive ? 'nav-link is-on' : 'nav-link')}>
         Money
+      </NavLink>
+      <NavLink to="/house" className={({ isActive }) => (isActive ? 'nav-link is-on' : 'nav-link')}>
+        House
       </NavLink>
     </nav>
   );
