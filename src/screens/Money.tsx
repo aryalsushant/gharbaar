@@ -24,6 +24,7 @@ export function Money() {
   const [error, setError] = useState<string | null>(null);
   const [settling, setSettling] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
+  const [opened, setOpened] = useState<string | null>(null);
 
   const personOf = (id: string) => house.data?.find((p) => p.id === id);
   const nameOf = (id: string) => personOf(id)?.display_name ?? 'Someone';
@@ -213,27 +214,57 @@ export function Money() {
       </section>
 
       <section className="stack-lg rise rise-5">
-        <p className="tag">Recent</p>
+        <p className="tag">Everything logged</p>
         {expenses.data?.length === 0 ? (
           <p className="lede">Nothing logged yet.</p>
         ) : (
           <ul className="strip">
-            {expenses.data?.slice(0, 12).map((expense) => (
-              <li key={expense.id}>
-                <div className="expense-row">
-                  <span className="strip-when tag figure">{expense.created_at.slice(0, 10)}</span>
-                  <span className="strip-who">
-                    {expense.description || categoryLabel(expense.category)}
-                  </span>
-                  <span className="expense-meta tag">
-                    {categoryLabel(expense.category)}
-                    {expense.apartment ? ` · ${expense.apartment}` : ''} · {nameOf(expense.paid_by)}{' '}
-                    paid
-                  </span>
-                  <span className="figure expense-amount">{formatMoney(Number(expense.amount))}</span>
-                </div>
-              </li>
-            ))}
+            {expenses.data?.map((expense) => {
+              const mine = (splits.data ?? []).filter((s) => s.expense_id === expense.id);
+              const open = opened === expense.id;
+
+              return (
+                <li key={expense.id}>
+                  <button
+                    className={`expense-row${open ? ' is-open' : ''}`}
+                    onClick={() => setOpened(open ? null : expense.id)}
+                  >
+                    <span className="strip-when tag figure">{expense.created_at.slice(5, 10)}</span>
+                    <span className="strip-who">
+                      {expense.description || categoryLabel(expense.category)}
+                    </span>
+                    <span className="expense-meta tag">
+                      {categoryLabel(expense.category)}
+                      {expense.apartment ? ` · ${expense.apartment}` : ''} ·{' '}
+                      {nameOf(expense.paid_by)} paid · split {mine.length}{' '}
+                      {mine.length === 1 ? 'way' : 'ways'}
+                    </span>
+                    <span className="figure expense-amount">
+                      {formatMoney(Number(expense.amount))}
+                    </span>
+                  </button>
+
+                  {open && (
+                    <ul className="split-detail">
+                      {mine.map((share) => (
+                        <li key={share.id}>
+                          <span className="faced">
+                            <Avatar
+                              rosterKey={personOf(share.user_id)?.roster_key ?? null}
+                              name={nameOf(share.user_id)}
+                              url={personOf(share.user_id)?.avatar_url}
+                              size={22}
+                            />
+                            {nameOf(share.user_id)}
+                          </span>
+                          <span className="figure">{formatMoney(Number(share.amount_owed))}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

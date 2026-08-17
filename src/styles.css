@@ -1235,6 +1235,14 @@ h2 {
 }
 
 .expense-row {
+  width: 100%;
+  cursor: pointer;
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+  transition:
+    background 0.4s var(--ease-liquid),
+    border-color 0.4s var(--ease-liquid);
   display: grid;
   grid-template-columns: 6.5rem 1fr auto;
   grid-template-areas:
@@ -1358,6 +1366,31 @@ h2 {
 
 .faced-link:hover {
   border-bottom-color: var(--aqua);
+}
+
+/* Every expense opens to show who carried what. Seeing the total and the payer
+   without the split makes a two-way bill look identical to a six-way one, which
+   is exactly the thing worth checking. */
+
+.expense-row.is-open {
+  border-color: rgba(99, 230, 200, 0.4);
+  background: rgba(99, 230, 200, 0.06);
+}
+
+.split-detail {
+  list-style: none;
+  margin: 0;
+  padding: 10px 16px 4px;
+}
+
+.split-detail li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  font-size: 0.94rem;
+  color: var(--ink-soft);
 }
 
 /* Destructive actions live down here in the quietest type on the screen, and
