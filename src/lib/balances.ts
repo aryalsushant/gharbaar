@@ -16,6 +16,12 @@ export type SplitRow = {
   amount_owed: number;
 };
 
+export type SettlementRow = {
+  from_user: string;
+  to_user: string;
+  amount: number;
+};
+
 export type Balance = {
   user_id: string;
   /** Positive: the group owes them. Negative: they owe the group. */
@@ -42,11 +48,21 @@ export function splitEqually(totalCents: number, count: number): number[] {
   return Array.from({ length: count }, (_, i) => base + (i < remainder ? 1 : 0));
 }
 
-/** Net position per user: what they paid out, minus what they owe. */
+/**
+ * Net position per user: what they paid out, minus what they owe, minus what
+ * has already been handed over in cash.
+ *
+ * A settlement moves the needle in both directions at once. Paying somebody
+ * $20 lifts you by 20 and drops them by 20, which is exactly what would have
+ * happened if the debt had never existed. Without this the settle-up list would
+ * repeat the same advice forever, because the ledger would never hear that
+ * anybody acted on it.
+ */
 export function computeBalances(
   expenses: ExpenseRow[],
   splits: SplitRow[],
-  memberIds: string[]
+  memberIds: string[],
+  settlements: SettlementRow[] = []
 ): Balance[] {
   const net = new Map<string, number>(memberIds.map((id) => [id, 0]));
   const bump = (userId: string, cents: number) => {
@@ -58,6 +74,10 @@ export function computeBalances(
   }
   for (const split of splits) {
     bump(split.user_id, -toCents(split.amount_owed));
+  }
+  for (const settlement of settlements) {
+    bump(settlement.from_user, toCents(settlement.amount));
+    bump(settlement.to_user, -toCents(settlement.amount));
   }
 
   return Array.from(net, ([user_id, cents]) => ({ user_id, net: fromCents(cents) }));

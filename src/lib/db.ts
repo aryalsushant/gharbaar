@@ -229,6 +229,69 @@ export function useAddExpense() {
   });
 }
 
+// --- settling up ------------------------------------------------------------
+
+export type Settlement = {
+  id: string;
+  from_user: string;
+  to_user: string;
+  amount: number;
+  note: string;
+  settled_on: string;
+};
+
+export function useSettlements() {
+  return useQuery({
+    queryKey: ['settlements'],
+    queryFn: async () =>
+      unwrap(
+        await supabase
+          .from('settlements')
+          .select('id, from_user, to_user, amount, note, settled_on')
+          .order('settled_on', { ascending: false })
+      ) as Settlement[],
+  });
+}
+
+/**
+ * Only the person who was paid can record it, which the policy enforces. A
+ * payer logging their own payment is a claim; a recipient logging one is an
+ * admission against interest, and nobody writes down money they did not get.
+ */
+export function useRecordSettlement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      fromUser,
+      toUser,
+      amount,
+      note = '',
+    }: {
+      fromUser: string;
+      toUser: string;
+      amount: number;
+      note?: string;
+    }) => {
+      const { error } = await supabase
+        .from('settlements')
+        .insert({ from_user: fromUser, to_user: toUser, amount, note });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settlements'] }),
+  });
+}
+
+export function useUnrecordSettlement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('settlements').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settlements'] }),
+  });
+}
+
 // --- responsibilities -------------------------------------------------------
 
 export function useResponsibilities() {
