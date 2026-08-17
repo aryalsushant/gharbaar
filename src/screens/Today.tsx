@@ -51,6 +51,21 @@ export function Today() {
 
   const todayKey = toDateKey(new Date());
 
+  /**
+   * The sign-off question only appears at 10:30pm.
+   *
+   * Asking at six in the evening invites an answer nobody can give yet, and a
+   * question sitting there all day is one people learn to tap without reading.
+   * Ticked every minute rather than read once, so the card appears on its own
+   * for anybody who left the app open.
+   */
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const tick = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(tick);
+  }, []);
+  const signOffOpen = now.getHours() * 60 + now.getMinutes() >= 22 * 60 + 30;
+
   const personOf = (id: string | null) => (id ? house.data?.find((p) => p.id === id) : undefined);
   const nameOf = (id: string | null) => personOf(id)?.display_name ?? (id ? 'Someone' : 'Nobody');
   const seatOf = (id: string | null) => personOf(id)?.roster_key ?? null;
@@ -258,7 +273,7 @@ export function Today() {
 
       {error && startsLater && <p className="notice notice-bad rise rise-2">{error}</p>}
 
-      {!startsLater && (
+      {!startsLater && (iAmCooking || signOffOpen || tonightDone) && (
       <section className="panel stack-lg rise rise-2">
         {error && <p className="notice notice-bad">{error}</p>}
         {tonightDone ? (
@@ -293,7 +308,7 @@ export function Today() {
               </button>
             )}
           </>
-        ) : (
+        ) : !signOffOpen ? null : (
           <>
             <p className="tag">Did {nameOf(tonight?.assignee ?? null)} cook and clean?</p>
             <button
@@ -312,9 +327,6 @@ export function Today() {
             >
               Yes, done
             </button>
-            <p className="tag" style={{ marginTop: 12, letterSpacing: '0.08em' }}>
-              If they did not, leave it. Nothing is charged and nothing is recorded.
-            </p>
           </>
         )}
       </section>
