@@ -33,6 +33,26 @@ secure_password_change = false
 max_frequency = "1m0s"
 otp_length = 6
 
+# Gmail, via an app password.
+#
+# The built-in mailer cannot do this job: free tier projects on the default
+# provider are forbidden from editing email templates, and the default template
+# contains a sign-in link rather than a code. Custom SMTP is what unlocks the
+# template, and it also retires the two-emails-an-hour cap.
+#
+# Credentials come from the environment, never from this file. The repo is
+# public, and an app password is a live credential for a Google account.
+#
+#   $env:SMTP_USER='you@gmail.com'; $env:SMTP_PASS='16 chars'; npx supabase config push
+[auth.email.smtp]
+enabled = true
+host = "smtp.gmail.com"
+port = 465
+user = "env(SMTP_USER)"
+pass = "env(SMTP_PASS)"
+admin_email = "env(SMTP_USER)"
+sender_name = "Gharbaar"
+
 # The mail that carries the code. The default template sends a magic link, and
 # a link is the wrong shape here: people open the app on a phone and read the
 # code off a laptop, or the other way round. A code works either way.
