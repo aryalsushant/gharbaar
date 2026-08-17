@@ -5,8 +5,8 @@ enabled = true
 # Where confirmation and recovery links send people back to. Update this to the
 # deployed origin once the app has one, or password resets will bounce users to
 # localhost.
-site_url = "http://localhost:5173"
-additional_redirect_urls = ["http://localhost:5173"]
+site_url = "https://gharbaar.vercel.app"
+additional_redirect_urls = ["https://gharbaar.vercel.app", "http://localhost:5173"]
 enable_signup = true
 enable_anonymous_sign_ins = false
 minimum_password_length = 8
@@ -66,3 +66,11 @@ content_path = "./supabase/templates/magic_link.html"
 [auth.mfa.totp]
 enroll_enabled = true
 verify_enabled = true
+
+# The reminder is called by pg_cron, which has no user and therefore no JWT.
+# Supabase verifies one on every function by default and rejects the call before
+# our code runs. Our own x-cron-secret is what authorises it, checked in the
+# first four lines of the function, and the secret lives in Vault rather than in
+# this repo.
+[functions.cook-reminder]
+verify_jwt = false
