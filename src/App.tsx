@@ -7,6 +7,7 @@ import { useAuth } from './lib/auth';
 import { useProfile } from './lib/db';
 import { AddExpense } from './screens/AddExpense';
 import { Enter } from './screens/Enter';
+import { List } from './screens/List';
 import { Money } from './screens/Money';
 import { People } from './screens/People';
 import { Person } from './screens/Person';
@@ -49,6 +50,7 @@ export default function App() {
         ) : (
           <Routes>
             <Route path="/today" element={<Today />} />
+            <Route path="/list" element={<List />} />
             <Route path="/money" element={<Money />} />
             <Route path="/money/add" element={<AddExpense />} />
             <Route path="/money/:id/edit" element={<AddExpense />} />

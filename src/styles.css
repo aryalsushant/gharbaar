@@ -229,7 +229,7 @@ body {
   right: 0;
   bottom: 0;
   height: 0;
-  animation: flood 2.2s cubic-bezier(0.45, 0, 0.25, 1) forwards;
+  animation: flood 3.6s cubic-bezier(0.42, 0, 0.3, 1) forwards;
 }
 
 @keyframes flood {
@@ -248,13 +248,16 @@ body {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  backdrop-filter: blur(3px) saturate(150%) brightness(1.06) hue-rotate(-6deg);
-  -webkit-backdrop-filter: blur(3px) saturate(150%) brightness(1.06) hue-rotate(-6deg);
+  /* Deliberately thin. The point is that the mark stays legible through the
+     water: enough tint and distortion to read as glass, not enough to hide
+     what is behind it. Anything past about 1.5px of blur swallows the type. */
+  backdrop-filter: blur(1.4px) saturate(135%) brightness(1.1);
+  -webkit-backdrop-filter: blur(1.4px) saturate(135%) brightness(1.1);
   background: linear-gradient(
     to bottom,
-    rgba(79, 216, 207, 0.24) 0%,
-    rgba(36, 166, 160, 0.22) 45%,
-    rgba(10, 60, 84, 0.3) 100%
+    rgba(99, 230, 200, 0.14) 0%,
+    rgba(36, 166, 160, 0.12) 45%,
+    rgba(10, 60, 84, 0.18) 100%
   );
   border-top: 2px solid rgba(159, 245, 223, 0.75);
   box-shadow: 0 -18px 50px -18px rgba(99, 230, 200, 0.55);
@@ -310,7 +313,7 @@ body {
     rgba(255, 255, 255, 0.08) 100%
   );
   border: 1px solid rgba(255, 255, 255, 0.3);
-  animation: bubble-up 3.4s ease-in infinite;
+  animation: bubble-up 4.6s ease-in infinite;
 }
 
 @keyframes bubble-up {
@@ -1434,6 +1437,112 @@ h2 {
   padding: 7px 0;
   font-size: 0.94rem;
   color: var(--ink-soft);
+}
+
+/* ---------------------------------------------------------------------------
+   The list
+   No pictures. Each item is set at a size that follows the length of the word,
+   so a plain column of nouns reads as a note somebody wrote rather than a
+   table. Short words get to shout.
+   --------------------------------------------------------------------------- */
+
+.list-add {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.list-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list-items li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.list-items li:last-child {
+  border-bottom: none;
+}
+
+.list-item {
+  position: relative;
+  flex: 1;
+  text-align: left;
+  padding: 14px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ink);
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  animation: surface 0.7s var(--ease-liquid) both;
+  transition: color 0.4s var(--ease-liquid), opacity 0.4s var(--ease-liquid);
+}
+
+.list-item.is-xl { font-size: 2rem; }
+.list-item.is-lg { font-size: 1.55rem; }
+.list-item.is-md { font-size: 1.25rem; }
+.list-item.is-sm { font-size: 1.05rem; }
+
+.list-item:hover .list-name {
+  color: var(--aqua);
+}
+
+/* The strike draws across rather than appearing. It is the gesture repeated
+   twenty times while standing in a shop, so it is the one worth animating.
+   Bound to the word rather than the row, or it runs off into empty space. */
+.list-name {
+  position: relative;
+  display: inline-block;
+}
+
+.list-strike {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 2px;
+  width: 100%;
+  background: var(--aqua);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.45s var(--ease-liquid);
+}
+
+.list-item.is-got {
+  color: var(--ink-faint);
+  opacity: 0.75;
+}
+
+.list-item.is-got .list-strike {
+  transform: scaleX(1);
+}
+
+.list-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+.list-remove {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.list-remove:hover {
+  color: var(--coral);
+  border-bottom-color: var(--coral);
 }
 
 /* Destructive actions live down here in the quietest type on the screen, and
