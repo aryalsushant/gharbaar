@@ -4,23 +4,19 @@ import { Water } from './components/Water';
 import { useAuth } from './lib/auth';
 import { useProfile } from './lib/db';
 import { AddExpense } from './screens/AddExpense';
-import { ClaimSeat } from './screens/ClaimSeat';
+import { Enter } from './screens/Enter';
 import { Money } from './screens/Money';
 import { People } from './screens/People';
 import { Person } from './screens/Person';
-import { SignIn } from './screens/SignIn';
-import { SignUp } from './screens/SignUp';
 import { Today } from './screens/Today';
 
 /**
- * Three gates, in order:
- *   no session            -> sign in
- *   session, no seat      -> claim one of the six
- *   session with a seat   -> the house
+ * One gate, not three. Either you hold a seat and see the house, or you are on
+ * the way in: tiles, email, code.
  *
- * The middle gate matters more than it looks. Row level security keys off
- * whether a profile has claimed a roster seat, so an account that skipped it
- * can read nothing at all. Sending them anywhere else would just render empty.
+ * Holding a seat is the whole of membership. Row level security keys off it, so
+ * an account without one can read nothing at all, and sending it anywhere but
+ * the entrance would render an empty app.
  */
 export default function App() {
   const { session, userId, loading } = useAuth();
@@ -36,17 +32,8 @@ export default function App() {
           <div className="centered">
             <p className="tag rise rise-1">Gharbaar</p>
           </div>
-        ) : !session ? (
-          <Routes>
-            <Route path="/sign-in" element={<SignIn />} />
-            <Route path="/sign-up" element={<SignUp />} />
-            <Route path="*" element={<Navigate to="/sign-in" replace />} />
-          </Routes>
-        ) : !profile.data?.roster_key ? (
-          <Routes>
-            <Route path="/claim" element={<ClaimSeat />} />
-            <Route path="*" element={<Navigate to="/claim" replace />} />
-          </Routes>
+        ) : !session || !profile.data?.roster_key ? (
+          <Enter />
         ) : (
           <Routes>
             <Route path="/today" element={<Today />} />

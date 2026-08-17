@@ -837,6 +837,14 @@ h2 {
   background: rgba(255, 138, 107, 0.05);
 }
 
+/* Six digits, spaced out so they read as a code rather than a number. */
+.code-input {
+  font-size: 1.9rem;
+  letter-spacing: 0.5em;
+  text-align: center;
+  padding-left: 0.5em;
+}
+
 .amount-field {
   position: relative;
   display: flex;
