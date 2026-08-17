@@ -1183,6 +1183,40 @@ h2 {
   color: var(--coral);
 }
 
+/* A card with no affordance reads as a label rather than a door, so each one
+   carries a mark in the corner. Quiet until touched, then it leans. */
+.card-open {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--hairline);
+  background: rgba(2, 10, 17, 0.4);
+  color: var(--ink-faint);
+  transition:
+    color 0.4s var(--ease-liquid),
+    border-color 0.4s var(--ease-liquid),
+    background 0.4s var(--ease-liquid),
+    transform 0.4s var(--ease-liquid);
+}
+
+.card-open svg {
+  width: 14px;
+  height: 14px;
+}
+
+.person-card:hover .card-open {
+  color: var(--abyss-deep);
+  background: var(--aqua);
+  border-color: var(--aqua);
+  transform: translateX(2px);
+}
+
 .money-name {
   font-family: var(--display);
   font-weight: 600;
@@ -1332,6 +1366,7 @@ h2 {
 }
 
 .person-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;

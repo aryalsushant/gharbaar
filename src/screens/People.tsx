@@ -105,6 +105,20 @@ export function People() {
               {everybodyIn && fairnessNote(byPerson.get(person.id)) && (
                 <span className="flag flag-swap">{fairnessNote(byPerson.get(person.id))}</span>
               )}
+
+              {/* The whole card is the link. The corner mark says so, since a
+                  card that only looks like a card gets read as a label. */}
+              <span className="card-open" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M9 6l6 6-6 6"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
             </Link>
           );
         })}
