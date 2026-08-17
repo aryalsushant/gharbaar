@@ -1050,17 +1050,46 @@ h2 {
    Navigation
    --------------------------------------------------------------------------- */
 
+/* Tabs on the left, you on the right, on every screen. */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 26px;
+}
+
+.me {
+  flex: none;
+  display: inline-flex;
+  border-radius: 50%;
+  transition: transform 0.4s var(--ease-liquid);
+}
+
+.me .avatar {
+  border-width: 2px;
+  border-color: var(--hairline-bright);
+  transition: border-color 0.4s var(--ease-liquid), box-shadow 0.4s var(--ease-liquid);
+}
+
+.me:hover {
+  transform: translateY(-2px);
+}
+
+.me:hover .avatar {
+  border-color: rgba(99, 230, 200, 0.65);
+  box-shadow: 0 10px 26px -12px var(--aqua-glow);
+}
+
 .nav {
   display: flex;
   gap: 4px;
   padding: 4px;
-  margin-bottom: 26px;
   border: 1px solid var(--hairline);
   border-radius: 999px;
   background: rgba(2, 10, 17, 0.4);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  align-self: flex-start;
 }
 
 .nav-link {
