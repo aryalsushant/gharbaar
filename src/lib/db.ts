@@ -324,6 +324,83 @@ export function useDeleteExpense() {
   });
 }
 
+// --- the list ---------------------------------------------------------------
+
+export type GroceryItem = {
+  id: string;
+  name: string;
+  note: string;
+  added_by: string;
+  in_basket: boolean;
+  created_at: string;
+};
+
+export function useGroceryItems() {
+  return useQuery({
+    queryKey: ['grocery'],
+    queryFn: async () =>
+      unwrap(
+        await supabase
+          .from('grocery_items')
+          .select('id, name, note, added_by, in_basket, created_at')
+          .order('created_at')
+      ) as GroceryItem[],
+    // The one screen two people genuinely use at the same time, one adding
+    // from the sofa while the other is in the aisle.
+    refetchInterval: 15_000,
+  });
+}
+
+export function useAddGroceryItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ name, addedBy }: { name: string; addedBy: string }) => {
+      const { error } = await supabase
+        .from('grocery_items')
+        .insert({ name: name.trim(), added_by: addedBy });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['grocery'] }),
+  });
+}
+
+export function useToggleGroceryItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, inBasket }: { id: string; inBasket: boolean }) => {
+      const { error } = await supabase
+        .from('grocery_items')
+        .update({ in_basket: inBasket })
+        .eq('id', id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['grocery'] }),
+  });
+}
+
+export function useRemoveGroceryItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('grocery_items').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['grocery'] }),
+  });
+}
+
+/** Everything in the basket goes once the shop is logged. */
+export function useClearBasket() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('grocery_items').delete().eq('in_basket', true);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['grocery'] }),
+  });
+}
+
 // --- settling up ------------------------------------------------------------
 
 export type Settlement = {
