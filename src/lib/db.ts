@@ -367,6 +367,27 @@ export function useSetOverride(respId: string | undefined) {
   });
 }
 
+/**
+ * Both halves of a swap in one upsert. Writing them as two separate mutations
+ * would let the first land and the second fail, which leaves one person cooking
+ * twice and the other not at all.
+ */
+export function useApplySwap(respId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: { date: string; user_id: string }[]) => {
+      const { error } = await supabase
+        .from('responsibility_overrides')
+        .upsert(
+          rows.map((row) => ({ ...row, responsibility_id: respId })),
+          { onConflict: 'responsibility_id,date' }
+        );
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['overrides', respId] }),
+  });
+}
+
 export function useClearOverride(respId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
