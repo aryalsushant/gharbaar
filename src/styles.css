@@ -403,6 +403,19 @@ h2 {
   border-color: rgba(255, 138, 107, 0.3);
 }
 
+/* Not an error and not a success: something to do before continuing. */
+.notice-warn {
+  color: var(--amber);
+  background: rgba(255, 212, 138, 0.08);
+  border-color: rgba(255, 212, 138, 0.3);
+  line-height: 1.5;
+}
+
+.notice-warn strong {
+  color: var(--amber);
+  font-family: var(--display);
+}
+
 .notice-good {
   color: var(--aqua);
   background: rgba(99, 230, 200, 0.08);

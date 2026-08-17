@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { Avatar } from '../components/Avatar';
 import { useAuth } from '../lib/auth';
 import { useClaimIdentity, usePublicRoster } from '../lib/db';
+import { isIOS, isInstalled } from '../lib/push';
 
 type Step = 'tiles' | 'email' | 'code';
 
@@ -197,7 +198,15 @@ export function Enter() {
 
       {error && <p className="notice notice-bad rise rise-2">{error}</p>}
 
-      <div className="seats stack-lg rise rise-2">
+      {isIOS() && !isInstalled() && (
+        <div className="notice notice-warn stack-lg rise rise-2">
+          <strong>Add this to your home screen first.</strong> Tap Share, then Add to Home
+          Screen, and start from the icon. An iPhone keeps the app and Safari signed in
+          separately, so signing in here means doing it twice.
+        </div>
+      )}
+
+      <div className="seats stack-lg rise rise-3">
         {roster.data?.map((entry, i) => (
           <button
             key={entry.key}
@@ -225,7 +234,7 @@ function readable(err: unknown): string {
     return 'Somebody has already taken that one.';
   }
   if (/rate limit|too many/i.test(message)) {
-    return 'Too many codes requested. Wait a minute and try again.';
+    return 'The house has asked for too many codes this hour. Try again in an hour, or ask whoever set this up to send yours later.';
   }
   if (/expired|invalid/i.test(message)) {
     return 'That code did not work. It may have expired, so ask for another.';
