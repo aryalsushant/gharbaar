@@ -9,7 +9,7 @@ type AuthValue = {
   /** True until the persisted session has been read back from storage. */
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, displayName: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -45,12 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         if (error) throw error;
       },
-      signUp: async (email, password, displayName) => {
-        const { error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: { data: { display_name: displayName.trim() } },
-        });
+      // No display name here. The name comes from claiming one of the six
+      // roster identities after the account exists, not from a text field.
+      signUp: async (email, password) => {
+        const { error } = await supabase.auth.signUp({ email: email.trim(), password });
         if (error) throw error;
       },
       signOut: async () => {

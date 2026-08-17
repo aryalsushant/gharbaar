@@ -1,0 +1,41 @@
+project_id = "ifzmvwxtjeartovlppvo"
+
+[auth]
+enabled = true
+# Where confirmation and recovery links send people back to. Update this to the
+# deployed origin once the app has one, or password resets will bounce users to
+# localhost.
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173"]
+enable_signup = true
+enable_anonymous_sign_ins = false
+minimum_password_length = 8
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+
+# Off deliberately.
+#
+# Supabase's built-in mailer allows only a couple of messages an hour on the
+# free tier, and six people signing up the same evening hit a 429 that looks
+# exactly like the app being broken. We saw it happen on the second test signup.
+#
+# Confirming an address was never what protects this data anyway. The six roster
+# seats are: an account that has not claimed one can read its own profile row
+# and nothing else. Turning this on again is only worth it behind custom SMTP.
+enable_confirmations = false
+secure_password_change = false
+
+# Password recovery still sends mail even with confirmations off, so keep the
+# throttle and the longer code. Both of these were pinned back after the first
+# config push silently replaced them with CLI defaults.
+max_frequency = "1m0s"
+otp_length = 8
+
+# Also restored rather than chosen. Nobody has enrolled a second factor, but
+# switching the option off by leaving it out of a file is not a decision anyone
+# made.
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true

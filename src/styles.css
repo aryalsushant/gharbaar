@@ -1,0 +1,586 @@
+/*
+ * Gharbaar: deep water, lit glass.
+ *
+ * The house is named for a household, and the whole surface treatment is water
+ * seen from underneath: a near-black blue ground, slow caustic light drifting
+ * across it, and panels that read as wet glass rather than flat cards.
+ *
+ * Three rules keep it coherent:
+ *   1. One luminous accent (aqua). Everything else is ink and glass. A second
+ *      bright hue would turn atmosphere into decoration.
+ *   2. Money and dates are always monospaced. Figures should read as
+ *      instrumentation, and tabular numerals stop columns from dancing.
+ *   3. Corners are never uniform. Every panel is very slightly asymmetric,
+ *      which is what separates "organic" from "rounded rectangle".
+ */
+
+:root {
+  /* Ground */
+  --abyss: #04101a;
+  --abyss-deep: #020a11;
+  --tide: #0a2030;
+
+  /* Ink */
+  --ink: #eaf4f7;
+  --ink-soft: rgba(234, 244, 247, 0.62);
+  --ink-faint: rgba(234, 244, 247, 0.34);
+
+  /* The single accent, and its shadow-side companion */
+  --aqua: #63e6c8;
+  --aqua-deep: #24a6a0;
+  --aqua-glow: rgba(99, 230, 200, 0.28);
+
+  /* Semantics that must never be confused with each other:
+     grocery money is aqua, fines are coral, birthdays are amber. */
+  --coral: #ff8a6b;
+  --amber: #ffd48a;
+
+  /* Glass */
+  --glass: rgba(255, 255, 255, 0.055);
+  --glass-lift: rgba(255, 255, 255, 0.085);
+  --hairline: rgba(255, 255, 255, 0.1);
+  --hairline-bright: rgba(255, 255, 255, 0.18);
+
+  --display: 'Bricolage Grotesque', ui-sans-serif, sans-serif;
+  --body: 'Familjen Grotesk', ui-sans-serif, sans-serif;
+  --mono: 'Martian Mono', ui-monospace, monospace;
+
+  /* Organic corners: never the same on all four. */
+  --bend: 26px 30px 24px 28px;
+  --bend-sm: 14px 16px 13px 15px;
+  --bend-lg: 38px 44px 36px 42px;
+
+  --ease-liquid: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--abyss);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+   The water
+   Three slow caustic masses drifting at different speeds and directions. Heavy
+   blur means they never read as circles, only as light. Fixed position so the
+   background stays still while content scrolls over it.
+   --------------------------------------------------------------------------- */
+
+.water {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 50% 0%, #0b2537 0%, transparent 60%),
+    linear-gradient(180deg, var(--abyss) 0%, var(--abyss-deep) 100%);
+}
+
+.caustic {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.5;
+  will-change: transform;
+}
+
+.caustic-a {
+  width: 60vmax;
+  height: 60vmax;
+  left: -18vmax;
+  top: -22vmax;
+  background: radial-gradient(circle, rgba(36, 166, 160, 0.55), transparent 68%);
+  animation: drift-a 34s var(--ease-liquid) infinite alternate;
+}
+
+.caustic-b {
+  width: 52vmax;
+  height: 52vmax;
+  right: -20vmax;
+  top: 8vmax;
+  background: radial-gradient(circle, rgba(56, 132, 210, 0.42), transparent 68%);
+  animation: drift-b 46s var(--ease-liquid) infinite alternate;
+}
+
+.caustic-c {
+  width: 46vmax;
+  height: 46vmax;
+  left: 22vmax;
+  bottom: -26vmax;
+  background: radial-gradient(circle, rgba(99, 230, 200, 0.3), transparent 66%);
+  animation: drift-c 40s var(--ease-liquid) infinite alternate;
+}
+
+@keyframes drift-a {
+  to {
+    transform: translate3d(14vmax, 10vmax, 0) scale(1.18);
+  }
+}
+@keyframes drift-b {
+  to {
+    transform: translate3d(-16vmax, 14vmax, 0) scale(1.1);
+  }
+}
+@keyframes drift-c {
+  to {
+    transform: translate3d(10vmax, -12vmax, 0) scale(1.22);
+  }
+}
+
+/* Film grain. Without it the gradients band visibly on OLED phones. */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.35;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+/* ---------------------------------------------------------------------------
+   Layout
+   --------------------------------------------------------------------------- */
+
+.stage {
+  position: relative;
+  z-index: 2;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: max(28px, env(safe-area-inset-top)) 22px max(28px, env(safe-area-inset-bottom));
+}
+
+.centered {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 27rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Type
+   --------------------------------------------------------------------------- */
+
+.wordmark {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(2.9rem, 12vw, 4.1rem);
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+  margin: 0;
+  background: linear-gradient(168deg, #ffffff 8%, var(--aqua) 58%, var(--aqua-deep) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+h2 {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.4rem;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.4rem;
+}
+
+.lede {
+  color: var(--ink-soft);
+  margin: 0.7rem 0 0;
+  font-size: 1.02rem;
+  max-width: 24ch;
+}
+
+/* Small caps-ish technical label. Used for anything the eye should read as
+   metadata rather than content. */
+.tag {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.figure {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+/* ---------------------------------------------------------------------------
+   Glass
+   --------------------------------------------------------------------------- */
+
+.panel {
+  position: relative;
+  background: var(--glass);
+  border: 1px solid var(--hairline);
+  border-radius: var(--bend);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  padding: 26px 22px;
+  box-shadow:
+    0 24px 60px -28px rgba(0, 0, 0, 0.85),
+    inset 0 1px 0 0 var(--hairline-bright);
+}
+
+/* A wet highlight running along the top edge, so the panel catches light
+   the way glass does instead of sitting flat. */
+.panel::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 46%;
+  border-radius: var(--bend) var(--bend) 0 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent);
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Fields
+   --------------------------------------------------------------------------- */
+
+.field {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.field > .tag {
+  display: block;
+  margin-bottom: 7px;
+}
+
+.input {
+  width: 100%;
+  font-family: var(--body);
+  font-size: 1rem;
+  color: var(--ink);
+  background: rgba(2, 10, 17, 0.42);
+  border: 1px solid var(--hairline);
+  border-radius: var(--bend-sm);
+  padding: 13px 15px;
+  outline: none;
+  transition:
+    border-color 0.35s var(--ease-liquid),
+    box-shadow 0.35s var(--ease-liquid),
+    background 0.35s var(--ease-liquid);
+}
+
+.input::placeholder {
+  color: var(--ink-faint);
+}
+
+.input:focus {
+  border-color: rgba(99, 230, 200, 0.55);
+  background: rgba(2, 10, 17, 0.62);
+  box-shadow: 0 0 0 4px var(--aqua-glow);
+}
+
+.input[type='date'] {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Buttons
+   --------------------------------------------------------------------------- */
+
+.btn {
+  position: relative;
+  width: 100%;
+  font-family: var(--body);
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--abyss-deep);
+  background: linear-gradient(150deg, #9ff5df 0%, var(--aqua) 45%, var(--aqua-deep) 100%);
+  border: none;
+  border-radius: var(--bend-sm);
+  padding: 14px 18px;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow:
+    0 14px 34px -14px var(--aqua-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transition: transform 0.4s var(--ease-liquid), box-shadow 0.4s var(--ease-liquid);
+}
+
+/* Light sweeps across on hover, like a reflection moving over a wet surface. */
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  transition: transform 0.85s var(--ease-liquid);
+}
+
+.btn:hover:not(:disabled)::after {
+  transform: translateX(100%);
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow:
+    0 20px 44px -14px var(--aqua-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.988);
+}
+
+.btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.btn-quiet {
+  background: none;
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+.btn-quiet:hover:not(:disabled) {
+  background: var(--glass-lift);
+  border-color: var(--hairline-bright);
+  box-shadow: none;
+}
+
+.link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--aqua);
+  cursor: pointer;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.3s var(--ease-liquid);
+}
+
+.link:hover {
+  border-bottom-color: var(--aqua);
+}
+
+/* ---------------------------------------------------------------------------
+   Messages
+   --------------------------------------------------------------------------- */
+
+.notice {
+  font-size: 0.9rem;
+  border-radius: var(--bend-sm);
+  padding: 11px 14px;
+  margin-bottom: 14px;
+  border: 1px solid;
+}
+
+.notice-bad {
+  color: var(--coral);
+  background: rgba(255, 138, 107, 0.09);
+  border-color: rgba(255, 138, 107, 0.3);
+}
+
+.notice-good {
+  color: var(--aqua);
+  background: rgba(99, 230, 200, 0.08);
+  border-color: rgba(99, 230, 200, 0.28);
+}
+
+/* ---------------------------------------------------------------------------
+   Entrance
+   One orchestrated load with staggered children beats scattered micro-motion.
+   --------------------------------------------------------------------------- */
+
+@keyframes surface {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+.rise {
+  animation: surface 0.95s var(--ease-liquid) both;
+}
+
+.rise-1 { animation-delay: 0.05s; }
+.rise-2 { animation-delay: 0.16s; }
+.rise-3 { animation-delay: 0.27s; }
+.rise-4 { animation-delay: 0.38s; }
+.rise-5 { animation-delay: 0.49s; }
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.spread {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stack-lg {
+  margin-top: 28px;
+}
+
+/* ---------------------------------------------------------------------------
+   Readout
+   The sign-up form's live rule checks. Monospaced because they are diagnostics,
+   not prose, and the fixed character cell keeps them from reflowing as they
+   flip between states.
+   --------------------------------------------------------------------------- */
+
+.readout {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  border-radius: var(--bend-sm);
+  background: rgba(2, 10, 17, 0.32);
+  border: 1px solid var(--hairline);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: -0.01em;
+  color: var(--ink-faint);
+}
+
+.readout li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 3px 0;
+  transition: color 0.4s var(--ease-liquid);
+}
+
+.readout .mark {
+  width: 0.9em;
+  color: var(--ink-faint);
+  transition: color 0.4s var(--ease-liquid), transform 0.4s var(--ease-liquid);
+}
+
+.readout li.met {
+  color: var(--ink-soft);
+}
+
+.readout li.met .mark {
+  color: var(--aqua);
+  transform: scale(1.25);
+}
+
+/* ---------------------------------------------------------------------------
+   Seats
+   --------------------------------------------------------------------------- */
+
+.seats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 11px;
+}
+
+.seat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 17px 16px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--ink);
+  background: var(--glass);
+  border: 1px solid var(--hairline);
+  border-radius: var(--bend);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  animation: surface 0.9s var(--ease-liquid) both;
+  transition:
+    transform 0.45s var(--ease-liquid),
+    border-color 0.45s var(--ease-liquid),
+    background 0.45s var(--ease-liquid),
+    box-shadow 0.45s var(--ease-liquid);
+}
+
+.seat:hover:not(:disabled) {
+  transform: translateY(-3px);
+  background: var(--glass-lift);
+  border-color: rgba(99, 230, 200, 0.42);
+  box-shadow: 0 18px 40px -22px var(--aqua-glow);
+}
+
+.seat:active:not(:disabled) {
+  transform: translateY(-1px) scale(0.985);
+}
+
+.seat:disabled {
+  cursor: not-allowed;
+  opacity: 0.36;
+}
+
+.seat-name {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.22rem;
+  letter-spacing: -0.02em;
+}
+
+/* ---------------------------------------------------------------------------
+   Lists
+   --------------------------------------------------------------------------- */
+
+.roster-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+.roster-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.roster-list li:last-child {
+  border-bottom: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
