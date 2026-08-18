@@ -15,6 +15,14 @@
  */
 
 :root {
+  /* The bead. Light gathers top-left and falls away bottom-right, which is what
+     makes a flat panel read as something with a wet surface. Used by every card
+     so they belong to one material rather than four. */
+  --wet: inset 10px 10px 20px rgba(2, 10, 17, 0.4), inset -10px -10px 22px rgba(255, 255, 255, 0.06),
+    0 20px 38px -26px rgba(0, 0, 0, 0.75);
+  --wet-lit: inset 10px 10px 20px rgba(2, 10, 17, 0.35),
+    inset -10px -10px 24px rgba(159, 245, 223, 0.1), 0 20px 42px -24px var(--aqua-glow);
+
   /* Ground */
   --abyss: #04101a;
   --abyss-deep: #020a11;
@@ -159,69 +167,255 @@ body {
 
 /* ---------------------------------------------------------------------------
    Splash
-   The tide runs sideways rather than the house sinking, so the mark stays still
-   and the water moves through it. That reads as a place in water; a house
-   sliding under reads as a flood.
+   One drop, and what it does to still water. Everything shares the same easing
+   and the same 3.2s, because water that moves to several different clocks at
+   once is what made the last version read as artificial.
    --------------------------------------------------------------------------- */
 
 .splash {
   position: fixed;
   inset: 0;
   z-index: 40;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  background: radial-gradient(120% 90% at 50% 30%, #0b2537 0%, #04101a 60%, #020a11 100%);
-  transition: opacity 0.7s var(--ease-liquid), transform 0.7s var(--ease-liquid);
+  overflow: hidden;
+  background: radial-gradient(115% 85% at 50% 46%, #0d2a3d 0%, #061620 52%, #020a11 100%);
+  transition: opacity 0.6s var(--ease-liquid);
 }
 
 .splash.is-leaving {
   opacity: 0;
-  transform: scale(1.06);
   pointer-events: none;
 }
 
+/* The blobs.
+   A square box so the circles stay round, tall enough that the fall covers real
+   distance, and sitting just above centre so the pool lands where the face
+   appears. */
+.goo {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 54vh;
+  height: 54vh;
+  max-width: 92vw;
+  max-height: 92vw;
+  transform: translateX(-50%);
+  overflow: visible;
+}
+
+/* The source. It swells, necks down as the drop pulls away, then settles back,
+   which is the whole trick: the neck is two circles the filter has not quite
+   let go of yet. */
+.blob-source {
+  transform-origin: 50px 6px;
+  animation: blob-source 1.15s ease-in-out forwards;
+}
+
+@keyframes blob-source {
+  0% {
+    transform: scale(0.5);
+  }
+  22% {
+    transform: scale(1.12) scaleY(1.3);
+  }
+  /* Stretched thin at the moment it lets go. */
+  38% {
+    transform: scale(0.92) scaleY(1.05);
+  }
+  60% {
+    transform: scale(0.72);
+  }
+  100% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+
+/* The drop itself. Slow while it is still attached, then steady once free,
+   stretching as it goes and flattening as it meets the pool. */
+.blob-drop {
+  transform-origin: 50px 6px;
+  /* Two animations. The fall ends exactly on impact, which is what fires the
+     sound, and a second one dissolves the drop while it is inside the pool, so
+     it is never seen to stop or vanish: by the time it fades it is already part
+     of the same blob. */
+  animation:
+    blob-fall 1.15s linear forwards,
+    blob-absorb 0.34s linear 1.14s forwards;
+}
+
+@keyframes blob-absorb {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes blob-fall {
+  0% {
+    transform: translateY(0) scale(0.6);
+  }
+  26% {
+    transform: translateY(2px) scaleY(1.35) scaleX(0.85);
+  }
+  /* Free of the source and falling. */
+  40% {
+    transform: translateY(14px) scaleY(1.2) scaleX(0.9);
+  }
+  88% {
+    transform: translateY(74px) scaleY(1.25) scaleX(0.88);
+  }
+  /* Meeting the pool. */
+  100% {
+    transform: translateY(82px) scaleY(0.75) scaleX(1.25);
+  }
+}
+
+/* The pool. Nothing until the drop is close, then it swells to take it and
+   settles wide and flat, which is what a surface does after swallowing one. */
+.blob-pool {
+  transform-origin: 50px 88px;
+  animation: blob-pool 1.9s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+}
+
+/* The pool has to exist before the drop arrives, or the drop lands on nothing
+   and the merge never happens. It starts swelling while the drop is still
+   falling, so the two are already one shape by the time they meet. */
+@keyframes blob-pool {
+  0%, 38% {
+    transform: scale(0);
+  }
+  /* Rising to meet it. */
+  52% {
+    transform: scale(0.42);
+  }
+  /* The moment of contact, at 1.15s of this 1.9s animation. */
+  61% {
+    transform: scale(0.85) scaleY(0.95);
+  }
+  /* Taking it in and settling. */
+  74% {
+    transform: scale(1.35) scaleY(0.82);
+  }
+  /* Spreading out and thinning away. */
+  100% {
+    transform: scale(2.7) scaleY(0.16);
+    opacity: 0;
+  }
+}
+
+/* The splash. Thrown up out of the pool the instant the drop arrives, at uneven
+   angles so it does not read as a symmetrical burst, and pulled back down past
+   where it started. */
+/* transform-box matters more than it looks. An SVG element scales about the
+   centre of the viewBox by default, not its own centre, so each spray was being
+   dragged toward the middle of the box as it grew rather than leaving from
+   where it sat. */
+.spray {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: spray 0.75s cubic-bezier(0.2, 0.7, 0.4, 1) 1.12s forwards;
+}
+
+.spray-1 { --x: -15px; --y: -13px; animation-delay: 1.13s; }
+.spray-2 { --x: -7px;  --y: -21px; animation-delay: 1.12s; }
+.spray-3 { --x: 4px;   --y: -24px; animation-delay: 1.15s; }
+.spray-4 { --x: 11px;  --y: -18px; animation-delay: 1.12s; }
+.spray-5 { --x: 19px;  --y: -10px; animation-delay: 1.16s; }
+.spray-6 { --x: -21px; --y: -6px;  animation-delay: 1.14s; }
+.spray-7 { --x: 26px;  --y: -3px;  animation-delay: 1.17s; }
+.spray-8 { --x: -3px;  --y: -27px; animation-delay: 1.13s; }
+
+@keyframes spray {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.4);
+  }
+  14% {
+    opacity: 1;
+  }
+  /* Top of the arc. */
+  52% {
+    transform: translate(var(--x), var(--y)) scale(1);
+    opacity: 1;
+  }
+  /* Gravity takes it back past the surface. */
+  100% {
+    transform: translate(calc(var(--x) * 1.5), 5px) scale(0.4);
+    opacity: 0;
+  }
+}
+
+.splash-core {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+/* The house surfaces through the rings rather than being placed on top: it
+   arrives with the impact, slightly small, and settles. */
 .splash-mark {
-  width: clamp(108px, 34vw, 160px);
-  animation: surface 1s var(--ease-liquid) both;
+  width: clamp(104px, 30vw, 140px);
+  animation: emerge 1.6s cubic-bezier(0.16, 0.7, 0.32, 1) 1.7s both;
 }
 
 .splash-mark svg {
   width: 100%;
   height: auto;
-  filter: drop-shadow(0 20px 44px rgba(99, 230, 200, 0.22));
+  filter: drop-shadow(0 18px 40px rgba(99, 230, 200, 0.3));
 }
 
-/* One wavelength is 32 units wide, so translating by exactly that loops
-   seamlessly however long it runs. */
-.splash-tide {
-  animation: tide 3.2s linear infinite;
-}
-
-@keyframes tide {
-  to {
-    transform: translateX(32px);
+@keyframes emerge {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
   }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The same emerging as the mark, ringed so the face reads as the thing the
+   drop landed on rather than a photo placed on top of it. */
+.splash-face {
+  animation: emerge 1.6s cubic-bezier(0.16, 0.7, 0.32, 1) 1.7s both;
+}
+
+.splash-face .avatar {
+  border-width: 3px;
+  border-color: rgba(159, 245, 223, 0.7);
+  box-shadow:
+    0 0 0 8px rgba(99, 230, 200, 0.08),
+    0 24px 50px -20px rgba(99, 230, 200, 0.45);
 }
 
 .splash-name {
   font-family: var(--display);
   font-weight: 800;
-  font-size: clamp(2rem, 9vw, 2.7rem);
+  font-size: clamp(2.1rem, 9.5vw, 2.9rem);
   letter-spacing: -0.045em;
-  margin: 14px 0 0;
+  margin: 18px 0 0;
   background: linear-gradient(168deg, #ffffff 8%, var(--aqua) 62%, var(--aqua-deep) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: surface 1s var(--ease-liquid) 0.35s both;
+  animation: emerge 1.5s cubic-bezier(0.16, 0.7, 0.32, 1) 2s both;
 }
 
 .splash-sub {
-  margin: 0;
-  animation: surface 1s var(--ease-liquid) 0.55s both;
+  margin: 4px 0 0;
+  animation: emerge 1.5s cubic-bezier(0.16, 0.7, 0.32, 1) 2.25s both;
+}
+
+/* Reduced motion gets the settled picture: no drop, no rings, nothing moving. */
+@media (prefers-reduced-motion: reduce) {
+  .goo {
+    display: none;
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -302,15 +496,13 @@ h2 {
 
 .panel {
   position: relative;
-  background: var(--glass);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.03));
   border: 1px solid var(--hairline);
-  border-radius: var(--bend);
+  border-radius: 22px 30px 24px 28px / 26px 24px 30px 26px;
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
   padding: 26px 22px;
-  box-shadow:
-    0 24px 60px -28px rgba(0, 0, 0, 0.85),
-    inset 0 1px 0 0 var(--hairline-bright);
+  box-shadow: var(--wet);
 }
 
 /* A wet highlight running along the top edge, so the panel catches light
@@ -587,18 +779,24 @@ h2 {
   gap: 11px;
 }
 
+/* Centred, so the shape has something to hold.
+   Left-aligned content in a wide box stretches the blob into a squashed oval
+   with an empty right half. Stacking the face over the name makes the tile
+   roughly square, which is the only proportion a drop shape reads well at. */
 .seat {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  padding: 17px 16px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 16px;
   cursor: pointer;
-  text-align: left;
+  text-align: center;
   color: var(--ink);
-  background: var(--glass);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
   border: 1px solid var(--hairline);
-  border-radius: var(--bend);
+  border-radius: 42% 58% 46% 54% / 48% 44% 56% 52%;
+  box-shadow: var(--wet);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   animation: surface 0.9s var(--ease-liquid) both;
@@ -659,8 +857,12 @@ h2 {
    The board
    --------------------------------------------------------------------------- */
 
+/* Content pages start at the top. Vertical centering belongs to the way in,
+   where there is one thing to look at, and it makes every other screen drift
+   down or up depending on how much happens to be on it. */
 .centered.wide {
   max-width: 34rem;
+  justify-content: flex-start;
 }
 
 /* Fines get their own button weight. Charging somebody $10 should not look
@@ -718,7 +920,112 @@ h2 {
   color: var(--amber);
 }
 
-/* --- the fortnight strip --- */
+/* --- tonight and tomorrow ---
+   The only two days anybody acts on, so the face is large enough to recognise
+   from across a kitchen rather than a disc you squint at. */
+
+.headline-days {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 12px 0 14px;
+}
+
+/* Tonight and tomorrow are water drops.
+   The shape is an uneven border-radius that drifts between two states, and the
+   depth is inset shadows: bright where light would sit on the top-left of a
+   bead, dark where it would fall away. Adapted rather than copied from the
+   light-background version of this trick, which uses black insets that would
+   only muddy a dark screen.
+   The corners are deliberately gentler than a true blob. Anything rounder eats
+   into the face and the date, and a card you cannot read is not a nice card. */
+.headline-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 26px 18px 22px;
+  cursor: pointer;
+  color: var(--ink);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--hairline);
+  border-radius: 44% 56% 46% 54% / 48% 44% 56% 52%;
+  backdrop-filter: blur(22px) saturate(170%);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  box-shadow:
+    inset 12px 12px 22px rgba(2, 10, 17, 0.45),
+    inset -12px -12px 26px rgba(255, 255, 255, 0.07),
+    0 22px 40px -26px rgba(0, 0, 0, 0.8);
+  animation:
+    surface 0.9s var(--ease-liquid) both,
+    bead 9s ease-in-out 1s infinite alternate;
+  transition:
+    transform 0.45s var(--ease-liquid),
+    border-color 0.45s var(--ease-liquid),
+    background 0.45s var(--ease-liquid);
+}
+
+/* The two catchlights every drawn water drop has, and the reason the eye reads
+   it as a bead rather than a rounded box. */
+/* No catchlight. A white smear over a dark card renders as a grey sphere stuck
+   on top of it, and the inset shadows already do the work of making the surface
+   read as wet. The money tiles prove it: same material, no highlight, better.
+*/
+
+/* Two shapes, drifting. Slow enough to notice only if you look. */
+@keyframes bead {
+  from {
+    border-radius: 44% 56% 46% 54% / 48% 44% 56% 52%;
+  }
+  to {
+    border-radius: 60% 40% 55% 45% / 38% 52% 48% 62%;
+  }
+}
+
+.headline-day:hover {
+  transform: translateY(-3px);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.05));
+  border-color: var(--hairline-bright);
+}
+
+/* Tonight is the only card carrying the accent, so the eye lands on it first. */
+.headline-day.is-today {
+  border-color: rgba(99, 230, 200, 0.5);
+  background: linear-gradient(150deg, rgba(99, 230, 200, 0.16), rgba(99, 230, 200, 0.05));
+  box-shadow:
+    inset 12px 12px 22px rgba(2, 10, 17, 0.4),
+    inset -12px -12px 26px rgba(159, 245, 223, 0.12),
+    0 22px 46px -24px var(--aqua-glow);
+}
+
+.headline-day .avatar {
+  border-width: 2px;
+}
+
+.headline-day.is-today .avatar {
+  border-color: rgba(99, 230, 200, 0.55);
+}
+
+.headline-name {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.22rem;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.headline-day .strip-flags {
+  justify-content: center;
+}
+
+.flag-ask {
+  color: var(--aqua);
+  border-color: rgba(99, 230, 200, 0.4);
+  background: rgba(99, 230, 200, 0.09);
+}
+
+/* --- the rest of the week --- */
 
 .strip {
   list-style: none;
@@ -736,12 +1043,19 @@ h2 {
   align-items: center;
   gap: 12px;
   text-align: left;
-  cursor: pointer;
-  padding: 13px 16px;
+  padding: 12px 22px;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid var(--hairline);
-  border-radius: var(--bend-sm);
+  /* Capsules, not rectangles.
+     Two blobs sitting on a stack of boxes was the thing that looked wrong: the
+     corners disagreed with everything above them. A fully rounded row has no
+     corners to disagree with, and a column of them reads as drops running down
+     rather than as a table. */
+  border-radius: 999px;
+  box-shadow:
+    inset 6px 6px 14px rgba(2, 10, 17, 0.3),
+    inset -6px -6px 16px rgba(255, 255, 255, 0.045);
   animation: surface 0.8s var(--ease-liquid) both;
   transition:
     background 0.4s var(--ease-liquid),
@@ -798,12 +1112,6 @@ h2 {
   color: var(--aqua);
   border-color: rgba(99, 230, 200, 0.4);
   background: rgba(99, 230, 200, 0.09);
-}
-
-.flag-fined {
-  color: var(--coral);
-  border-color: rgba(255, 138, 107, 0.4);
-  background: rgba(255, 138, 107, 0.09);
 }
 
 .cover-choices {
@@ -863,20 +1171,64 @@ h2 {
    Navigation
    --------------------------------------------------------------------------- */
 
+/* Tabs on the left, you on the right, on every screen.
+   Four tabs plus a face is more than a narrow phone can fit, so the tabs
+   scroll inside their own pill rather than pushing the face off the edge. The
+   face must always be reachable: it is the way back to your own details. */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 26px;
+  max-width: 100%;
+}
+
+.me {
+  flex: none;
+  margin-left: auto;
+  display: inline-flex;
+  border-radius: 50%;
+  transition: transform 0.4s var(--ease-liquid);
+}
+
+.me .avatar {
+  border-width: 2px;
+  border-color: var(--hairline-bright);
+  transition: border-color 0.4s var(--ease-liquid), box-shadow 0.4s var(--ease-liquid);
+}
+
+.me:hover {
+  transform: translateY(-2px);
+}
+
+.me:hover .avatar {
+  border-color: rgba(99, 230, 200, 0.65);
+  box-shadow: 0 10px 26px -12px var(--aqua-glow);
+}
+
 .nav {
   display: flex;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   gap: 4px;
   padding: 4px;
-  margin-bottom: 26px;
   border: 1px solid var(--hairline);
   border-radius: 999px;
   background: rgba(2, 10, 17, 0.4);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  align-self: flex-start;
+}
+
+.nav::-webkit-scrollbar {
+  display: none;
 }
 
 .nav-link {
+  white-space: nowrap;
+  flex: none;
   font-family: var(--body);
   font-size: 0.9rem;
   font-weight: 500;
@@ -899,6 +1251,47 @@ h2 {
   background: var(--glass-lift);
 }
 
+/* Narrow phones. The tabs give up their padding before the face gives up its
+   place, and all four labels stay readable: a tab you have to scroll to find is
+   a tab most people never press. */
+@media (max-width: 430px) {
+  .stage {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .topbar {
+    gap: 8px;
+  }
+
+  .nav {
+    gap: 2px;
+    padding: 3px;
+  }
+
+  .nav-link {
+    padding: 8px 11px;
+    font-size: 0.82rem;
+  }
+
+  .me .avatar {
+    width: 34px !important;
+    height: 34px !important;
+  }
+}
+
+@media (max-width: 350px) {
+  .nav-link {
+    padding: 7px 9px;
+    font-size: 0.78rem;
+  }
+
+  .me .avatar {
+    width: 30px !important;
+    height: 30px !important;
+  }
+}
+
 /* ---------------------------------------------------------------------------
    Money
    --------------------------------------------------------------------------- */
@@ -908,13 +1301,6 @@ h2 {
   display: block;
   text-align: center;
   text-decoration: none;
-}
-
-/* Fines sit apart from the shopping, and are coloured so nobody mistakes the
-   two. Netting a punishment against a grocery receipt would hide both. */
-.panel-fines {
-  border-color: rgba(255, 138, 107, 0.28);
-  background: rgba(255, 138, 107, 0.05);
 }
 
 /* Six digits, spaced out so they read as a code rather than a number. */
@@ -936,6 +1322,163 @@ h2 {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--hairline);
+}
+
+/* Everyone's standing as faces, because a column of names and numbers is a
+   spreadsheet and this is six people you live with. The tint carries the sign
+   as well as the figure, so a glance is enough. */
+
+.money-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 11px;
+  margin-top: 12px;
+}
+
+.money-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 22px 14px 18px;
+  text-align: center;
+  text-decoration: none;
+  color: var(--ink);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--hairline);
+  border-radius: 38% 62% 42% 58% / 44% 40% 60% 56%;
+  box-shadow: var(--wet);
+  backdrop-filter: blur(22px) saturate(170%);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  animation: surface 0.9s var(--ease-liquid) both;
+  transition:
+    transform 0.45s var(--ease-liquid),
+    border-color 0.45s var(--ease-liquid),
+    background 0.45s var(--ease-liquid);
+}
+
+.money-card:hover {
+  transform: translateY(-3px);
+  background: var(--glass-lift);
+}
+
+.money-card .avatar {
+  border-width: 2px;
+}
+
+.money-card.is-owed {
+  border-color: rgba(99, 230, 200, 0.35);
+}
+
+.money-card.is-owed .avatar {
+  border-color: rgba(99, 230, 200, 0.55);
+}
+
+.money-card.is-owed .money-amount {
+  color: var(--aqua);
+}
+
+.money-card.is-owing {
+  border-color: rgba(255, 138, 107, 0.32);
+}
+
+.money-card.is-owing .avatar {
+  border-color: rgba(255, 138, 107, 0.5);
+}
+
+.money-card.is-owing .money-amount {
+  color: var(--coral);
+}
+
+/* A card with no affordance reads as a label rather than a door, so each one
+   carries a mark in the corner. Quiet until touched, then it leans. */
+.card-open {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--hairline);
+  background: rgba(2, 10, 17, 0.4);
+  color: var(--ink-faint);
+  transition:
+    color 0.4s var(--ease-liquid),
+    border-color 0.4s var(--ease-liquid),
+    background 0.4s var(--ease-liquid),
+    transform 0.4s var(--ease-liquid);
+}
+
+.card-open svg {
+  width: 14px;
+  height: 14px;
+}
+
+.person-card:hover .card-open {
+  color: var(--abyss-deep);
+  background: var(--aqua);
+  border-color: var(--aqua);
+  transform: translateX(2px);
+}
+
+.money-name {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+  margin-top: 2px;
+}
+
+.money-amount {
+  font-size: 1.05rem;
+  letter-spacing: -0.04em;
+  color: var(--ink-faint);
+}
+
+/* Chips: categories, apartments, people. One control shape for every "pick
+   from a short list", so the form does not turn into four different widgets. */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  padding: 9px 15px;
+  cursor: pointer;
+  background: rgba(2, 10, 17, 0.36);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  transition:
+    color 0.35s var(--ease-liquid),
+    background 0.35s var(--ease-liquid),
+    border-color 0.35s var(--ease-liquid);
+}
+
+.chip:hover {
+  color: var(--ink);
+  border-color: var(--hairline-bright);
+}
+
+.chip.is-on {
+  color: var(--aqua);
+  background: rgba(99, 230, 200, 0.1);
+  border-color: rgba(99, 230, 200, 0.5);
+}
+
+.chip-face {
+  padding: 6px 14px 6px 6px;
 }
 
 .amount-field {
@@ -979,6 +1522,14 @@ h2 {
 }
 
 .expense-row {
+  width: 100%;
+  cursor: pointer;
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+  transition:
+    background 0.4s var(--ease-liquid),
+    border-color 0.4s var(--ease-liquid);
   display: grid;
   grid-template-columns: 6.5rem 1fr auto;
   grid-template-areas:
@@ -986,9 +1537,9 @@ h2 {
     'when who  amount';
   align-items: center;
   gap: 2px 12px;
-  padding: 13px 16px;
+  padding: 14px 20px;
   border: 1px solid var(--hairline);
-  border-radius: var(--bend-sm);
+  border-radius: 26px;
   background: rgba(255, 255, 255, 0.035);
 }
 
@@ -1022,17 +1573,19 @@ h2 {
 }
 
 .person-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 22px 16px;
+  padding: 24px 18px;
   text-align: center;
   text-decoration: none;
   color: var(--ink);
-  background: var(--glass);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
   border: 1px solid var(--hairline);
-  border-radius: var(--bend);
+  border-radius: 40% 60% 44% 56% / 46% 42% 58% 54%;
+  box-shadow: var(--wet);
   backdrop-filter: blur(22px) saturate(170%);
   -webkit-backdrop-filter: blur(22px) saturate(170%);
   transition:
@@ -1104,6 +1657,137 @@ h2 {
   border-bottom-color: var(--aqua);
 }
 
+/* Every expense opens to show who carried what. Seeing the total and the payer
+   without the split makes a two-way bill look identical to a six-way one, which
+   is exactly the thing worth checking. */
+
+.expense-row.is-open {
+  border-color: rgba(99, 230, 200, 0.4);
+  background: rgba(99, 230, 200, 0.06);
+}
+
+.split-detail {
+  list-style: none;
+  margin: 0;
+  padding: 10px 16px 4px;
+}
+
+.split-detail li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  font-size: 0.94rem;
+  color: var(--ink-soft);
+}
+
+/* ---------------------------------------------------------------------------
+   The list
+   No pictures. Each item is set at a size that follows the length of the word,
+   so a plain column of nouns reads as a note somebody wrote rather than a
+   table. Short words get to shout.
+   --------------------------------------------------------------------------- */
+
+.list-add {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.list-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list-items li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.list-items li:last-child {
+  border-bottom: none;
+}
+
+.list-item {
+  position: relative;
+  flex: 1;
+  text-align: left;
+  padding: 14px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ink);
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  animation: surface 0.7s var(--ease-liquid) both;
+  transition: color 0.4s var(--ease-liquid), opacity 0.4s var(--ease-liquid);
+}
+
+.list-item.is-xl { font-size: 2rem; }
+.list-item.is-lg { font-size: 1.55rem; }
+.list-item.is-md { font-size: 1.25rem; }
+.list-item.is-sm { font-size: 1.05rem; }
+
+.list-item:hover .list-name {
+  color: var(--aqua);
+}
+
+/* The strike draws across rather than appearing. It is the gesture repeated
+   twenty times while standing in a shop, so it is the one worth animating.
+   Bound to the word rather than the row, or it runs off into empty space. */
+.list-name {
+  position: relative;
+  display: inline-block;
+}
+
+.list-strike {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 2px;
+  width: 100%;
+  background: var(--aqua);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.45s var(--ease-liquid);
+}
+
+.list-item.is-got {
+  color: var(--ink-faint);
+  opacity: 0.75;
+}
+
+.list-item.is-got .list-strike {
+  transform: scaleX(1);
+}
+
+.list-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+.list-remove {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.list-remove:hover {
+  color: var(--coral);
+  border-bottom-color: var(--coral);
+}
+
 /* Destructive actions live down here in the quietest type on the screen, and
    ask a second time before doing anything. */
 .footer-row {
@@ -1128,6 +1812,10 @@ h2 {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .headline-day {
+    border-radius: var(--bend);
+  }
+
   *,
   *::before,
   *::after {

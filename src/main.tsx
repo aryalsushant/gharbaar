@@ -19,6 +19,26 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * Take a new build the moment it lands.
+ *
+ * The service worker calls skipWaiting, so a fresh one activates straight away,
+ * but the page it replaced keeps running the old JavaScript until something
+ * reloads it. That is the gap where the app looks like it has not been updated
+ * even though the new files are already on the device.
+ *
+ * The guard matters: without it, a worker that claims control during startup
+ * can reload the page in a loop.
+ */
+if ('serviceWorker' in navigator) {
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading) return;
+    reloading = true;
+    window.location.reload();
+  });
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

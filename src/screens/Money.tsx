@@ -5,10 +5,11 @@ import { Avatar } from '../components/Avatar';
 import { Nav } from '../components/Nav';
 import { useAuth } from '../lib/auth';
 import { computeBalances, formatMoney, settleUp } from '../lib/balances';
+import { categoryLabel } from '../lib/categories';
+import { mediumDate } from '../lib/dates';
 import {
   useExpenses,
   useHousehold,
-  usePenalties,
   useRecordSettlement,
   useSettlements,
   useSplits,
@@ -19,27 +20,15 @@ export function Money() {
   const house = useHousehold();
   const expenses = useExpenses();
   const splits = useSplits();
-  const penalties = usePenalties();
   const settlements = useSettlements();
   const record = useRecordSettlement();
   const [error, setError] = useState<string | null>(null);
   const [settling, setSettling] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
+  const [opened, setOpened] = useState<string | null>(null);
 
   const personOf = (id: string) => house.data?.find((p) => p.id === id);
   const nameOf = (id: string) => personOf(id)?.display_name ?? 'Someone';
-
-  const facedName = (id: string) => (
-    <Link className="faced faced-link" to={`/house/${id}`}>
-      <Avatar
-        rosterKey={personOf(id)?.roster_key ?? null}
-        name={nameOf(id)}
-        url={personOf(id)?.avatar_url}
-        size={26}
-      />
-      {nameOf(id)}
-    </Link>
-  );
 
   const memberIds = useMemo(() => (house.data ?? []).map((p) => p.id), [house.data]);
 
@@ -50,23 +39,7 @@ export function Money() {
 
   const transfers = useMemo(() => settleUp(balances), [balances]);
 
-  /**
-   * Fines are totalled apart from the shopping and never enter settleUp(). A
-   * $10 is owed to the house rather than to whoever happened to pay at the
-   * till, so netting it against groceries would quietly cancel a punishment
-   * against a receipt.
-   */
-  const fines = useMemo(() => {
-    const byPerson = new Map<string, number>();
-    for (const penalty of penalties.data ?? []) {
-      byPerson.set(penalty.user_id, (byPerson.get(penalty.user_id) ?? 0) + Number(penalty.amount));
-    }
-    return byPerson;
-  }, [penalties.data]);
-
-  const finesTotal = [...fines.values()].reduce((sum, n) => sum + n, 0);
   const mine = balances.find((b) => b.user_id === userId)?.net ?? 0;
-  const myFines = fines.get(userId ?? '') ?? 0;
 
   const loading = house.isLoading || expenses.isLoading || splits.isLoading;
 
@@ -88,11 +61,6 @@ export function Money() {
           </h1>
         ) : (
           <h1 className="wordmark">All square</h1>
-        )}
-        {myFines > 0 && (
-          <p className="lede" style={{ color: 'var(--coral)', maxWidth: 'none' }}>
-            Plus <span className="figure">{formatMoney(myFines)}</span> in fines to the house.
-          </p>
         )}
       </header>
 
@@ -210,72 +178,101 @@ export function Money() {
         </section>
       )}
 
-      <section className="panel stack-lg rise rise-3">
+      <section className="stack-lg rise rise-3">
         <p className="tag">Where everyone stands</p>
-        <ul className="roster-list">
+        <div className="money-grid">
           {balances
             .slice()
             .sort((a, b) => b.net - a.net)
-            .map((balance) => (
-              <li key={balance.user_id}>
-                {facedName(balance.user_id)}
-                <span
-                  className="figure"
-                  style={{
-                    color:
-                      balance.net > 0.004
-                        ? 'var(--aqua)'
-                        : balance.net < -0.004
-                          ? 'var(--coral)'
-                          : 'var(--ink-faint)',
-                  }}
+            .map((balance, i) => {
+              const person = personOf(balance.user_id);
+              const owed = balance.net > 0.004;
+              const owes = balance.net < -0.004;
+
+              return (
+                <Link
+                  key={balance.user_id}
+                  to={`/house/${balance.user_id}`}
+                  className={`money-card${owed ? ' is-owed' : owes ? ' is-owing' : ''}`}
+                  style={{ animationDelay: `${0.2 + i * 0.05}s` }}
                 >
-                  {balance.net > 0.004 ? '+' : balance.net < -0.004 ? '-' : ''}
-                  {formatMoney(balance.net)}
-                </span>
-              </li>
-            ))}
-        </ul>
+                  <Avatar
+                    rosterKey={person?.roster_key ?? null}
+                    name={nameOf(balance.user_id)}
+                    url={person?.avatar_url}
+                    size={64}
+                  />
+                  <span className="money-name">{nameOf(balance.user_id)}</span>
+                  <span className="figure money-amount">
+                    {owed ? '+' : owes ? '-' : ''}
+                    {formatMoney(balance.net)}
+                  </span>
+                  <span className="tag">{owed ? 'is owed' : owes ? 'owes' : 'square'}</span>
+                </Link>
+              );
+            })}
+        </div>
       </section>
 
-      {/* Deliberately its own panel, below the groceries, in coral. */}
-      {finesTotal > 0 && (
-        <section className="panel panel-fines stack-lg rise rise-4">
-          <p className="tag">Fines owed to the house</p>
-          <ul className="roster-list">
-            {[...fines.entries()]
-              .sort((a, b) => b[1] - a[1])
-              .map(([personId, amount]) => (
-                <li key={personId}>
-                  {facedName(personId)}
-                  <span className="figure" style={{ color: 'var(--coral)' }}>
-                    {formatMoney(amount)}
-                  </span>
-                </li>
-              ))}
-          </ul>
-          <p className="tag" style={{ marginTop: 12, letterSpacing: '0.08em' }}>
-            Kept out of the split above. A fine is owed to the house, not to whoever paid.
-          </p>
-        </section>
-      )}
-
       <section className="stack-lg rise rise-5">
-        <p className="tag">Recent</p>
+        <p className="tag">Everything logged</p>
         {expenses.data?.length === 0 ? (
           <p className="lede">Nothing logged yet.</p>
         ) : (
           <ul className="strip">
-            {expenses.data?.slice(0, 12).map((expense) => (
-              <li key={expense.id}>
-                <div className="expense-row">
-                  <span className="strip-when tag figure">{expense.created_at.slice(0, 10)}</span>
-                  <span className="strip-who">{expense.description || 'Groceries'}</span>
-                  <span className="expense-meta tag">{nameOf(expense.paid_by)} paid</span>
-                  <span className="figure expense-amount">{formatMoney(Number(expense.amount))}</span>
-                </div>
-              </li>
-            ))}
+            {expenses.data?.map((expense) => {
+              const mine = (splits.data ?? []).filter((s) => s.expense_id === expense.id);
+              const open = opened === expense.id;
+
+              return (
+                <li key={expense.id}>
+                  <button
+                    className={`expense-row${open ? ' is-open' : ''}`}
+                    onClick={() => setOpened(open ? null : expense.id)}
+                  >
+                    <span className="strip-when tag">{mediumDate(expense.created_at.slice(0, 10))}</span>
+                    <span className="strip-who">
+                      {expense.description || categoryLabel(expense.category)}
+                    </span>
+                    <span className="expense-meta tag">
+                      {categoryLabel(expense.category)}
+                      {expense.apartment ? ` · ${expense.apartment}` : ''} ·{' '}
+                      {nameOf(expense.paid_by)} paid · split {mine.length}{' '}
+                      {mine.length === 1 ? 'way' : 'ways'}
+                    </span>
+                    <span className="figure expense-amount">
+                      {formatMoney(Number(expense.amount))}
+                    </span>
+                  </button>
+
+                  {open && (
+                    <>
+                    <ul className="split-detail">
+                      {mine.map((share) => (
+                        <li key={share.id}>
+                          <span className="faced">
+                            <Avatar
+                              rosterKey={personOf(share.user_id)?.roster_key ?? null}
+                              name={nameOf(share.user_id)}
+                              url={personOf(share.user_id)?.avatar_url}
+                              size={22}
+                            />
+                            {nameOf(share.user_id)}
+                          </span>
+                          <span className="figure">{formatMoney(Number(share.amount_owed))}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="split-detail" style={{ paddingTop: 0 }}>
+                      <Link className="link" to={`/money/${expense.id}/edit`}>
+                        Edit or delete this
+                      </Link>
+                    </div>
+                    </>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

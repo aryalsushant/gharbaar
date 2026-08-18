@@ -56,3 +56,5 @@ app-example
 
 # Full-size photo originals, kept locally, never bundled
 public/people/originals/
+
+.vercel

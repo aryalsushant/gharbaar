@@ -1,22 +1,54 @@
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
+
+import { Avatar } from './Avatar';
+import { useAuth } from '../lib/auth';
+import { useProfile } from '../lib/db';
 
 /**
- * What the house is: tonight, the money, and the people. Three is the ceiling.
- * A household app that grows a five tab bar has stopped being about the
- * household.
+ * Tonight, the list, the money, the people, and you.
+ *
+ * Your own face sits apart from the tabs on purpose. The tabs are places in the
+ * house; your face is who you are while standing in them, and it belongs in the
+ * same corner of every screen so it can be reached without looking for it.
  */
 export function Nav() {
+  const { userId } = useAuth();
+  const me = useProfile(userId);
+
+  const tab = ({ isActive }: { isActive: boolean }) => (isActive ? 'nav-link is-on' : 'nav-link');
+
   return (
-    <nav className="nav rise rise-1">
-      <NavLink to="/today" className={({ isActive }) => (isActive ? 'nav-link is-on' : 'nav-link')}>
-        Tonight
-      </NavLink>
-      <NavLink to="/money" className={({ isActive }) => (isActive ? 'nav-link is-on' : 'nav-link')}>
-        Money
-      </NavLink>
-      <NavLink to="/house" className={({ isActive }) => (isActive ? 'nav-link is-on' : 'nav-link')}>
-        House
-      </NavLink>
-    </nav>
+    <div className="topbar rise rise-1">
+      <nav className="nav">
+        <NavLink to="/today" className={tab}>
+          Tonight
+        </NavLink>
+        <NavLink to="/list" className={tab}>
+          List
+        </NavLink>
+        <NavLink to="/money" className={tab}>
+          Money
+        </NavLink>
+        <NavLink to="/house" className={tab}>
+          House
+        </NavLink>
+      </nav>
+
+      {me.data && (
+        <Link
+          to={`/house/${me.data.id}`}
+          className="me"
+          aria-label={`${me.data.display_name}, your details`}
+          title="Your details"
+        >
+          <Avatar
+            rosterKey={me.data.roster_key}
+            name={me.data.display_name}
+            url={me.data.avatar_url}
+            size={38}
+          />
+        </Link>
+      )}
+    </div>
   );
 }

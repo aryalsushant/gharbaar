@@ -8,12 +8,16 @@ export type Profile = {
   display_name: string;
   avatar_url: string | null;
   roster_key: string | null;
+  /** Which flat they live in. Bills split within one, food across the house. */
+  apartment: string | null;
 };
 
 export type RosterEntry = {
   key: string;
   display_name: string;
   sort_order: number;
+  /** Position in the dinner rotation, fixed regardless of when they join. */
+  cook_order: number | null;
   claimed: boolean;
   /** Masked, like b****@gmail.com. Null when the seat is not bound yet. */
   email_hint: string | null;
@@ -25,6 +29,8 @@ export type Expense = {
   amount: number;
   description: string;
   category: string | null;
+  /** The flat a bill belongs to, or null for anything the house shares. */
+  apartment: string | null;
   items: { name: string; quantity?: number; amount?: number }[] | null;
   created_at: string;
 };
@@ -58,17 +64,6 @@ export type ResponsibilityCompletion = {
   date: string;
   user_id: string;
   marked_by: string | null;
-};
-
-export type Penalty = {
-  id: string;
-  user_id: string;
-  issued_by: string;
-  responsibility_id: string | null;
-  date: string;
-  amount: number;
-  reason: string;
-  created_at: string;
 };
 
 /** Every Supabase call funnels through here so one error shape reaches the UI. */
@@ -125,7 +120,7 @@ export function useProfile(userId: string | null) {
       unwrap(
         await supabase
           .from('profiles')
-          .select('id, display_name, avatar_url, roster_key')
+          .select('id, display_name, avatar_url, roster_key, apartment')
           .eq('id', userId!)
           .single()
       ) as Profile,
@@ -141,7 +136,7 @@ export function useHousehold() {
       unwrap(
         await supabase
           .from('profiles')
-          .select('id, display_name, avatar_url, roster_key')
+          .select('id, display_name, avatar_url, roster_key, apartment')
           .not('roster_key', 'is', null)
       ) as Profile[],
   });
@@ -156,7 +151,7 @@ export function useExpenses() {
       unwrap(
         await supabase
           .from('expenses')
-          .select('id, paid_by, amount, description, category, items, created_at')
+          .select('id, paid_by, amount, description, category, apartment, items, created_at')
           .order('created_at', { ascending: false })
       ) as Expense[],
   });
@@ -187,6 +182,7 @@ export function useAddExpense() {
       paidBy,
       memberIds,
       category,
+      apartment,
       items,
     }: {
       amount: number;
@@ -194,6 +190,7 @@ export function useAddExpense() {
       paidBy: string;
       memberIds: string[];
       category?: string | null;
+      apartment?: string | null;
       items?: Expense['items'];
     }) => {
       const expense = unwrap(
@@ -205,6 +202,7 @@ export function useAddExpense() {
             description: description.trim(),
             split_type: 'equal',
             category: category ?? null,
+            apartment: apartment ?? null,
             items: items ?? null,
           })
           .select('id')
@@ -226,6 +224,182 @@ export function useAddExpense() {
       qc.invalidateQueries({ queryKey: ['expenses'] });
       qc.invalidateQueries({ queryKey: ['splits'] });
     },
+  });
+}
+
+export function useExpense(id: string | undefined) {
+  return useQuery({
+    queryKey: ['expense', id],
+    queryFn: async () => {
+      const expense = unwrap(
+        await supabase
+          .from('expenses')
+          .select('id, paid_by, amount, description, category, apartment, items, created_at')
+          .eq('id', id!)
+          .single()
+      ) as Expense;
+      const splits = unwrap(
+        await supabase.from('expense_splits').select('user_id').eq('expense_id', id!)
+      ) as { user_id: string }[];
+      return { expense, sharedBy: splits.map((s) => s.user_id) };
+    },
+    enabled: !!id,
+  });
+}
+
+/**
+ * Change an expense after the fact.
+ *
+ * The splits are replaced wholesale rather than reconciled row by row. Working
+ * out which shares to add, update and remove is fiddly and the answer is always
+ * the same set anyway, and it means a corrected amount can never leave a stale
+ * share behind that quietly unbalances the ledger.
+ */
+export function useEditExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      amount,
+      description,
+      paidBy,
+      memberIds,
+      category,
+      apartment,
+    }: {
+      id: string;
+      amount: number;
+      description: string;
+      paidBy: string;
+      memberIds: string[];
+      category?: string | null;
+      apartment?: string | null;
+    }) => {
+      const { error: updateError } = await supabase
+        .from('expenses')
+        .update({
+          paid_by: paidBy,
+          amount,
+          description: description.trim(),
+          category: category ?? null,
+          apartment: apartment ?? null,
+        })
+        .eq('id', id);
+      if (updateError) throw new Error(updateError.message);
+
+      const { error: clearError } = await supabase
+        .from('expense_splits')
+        .delete()
+        .eq('expense_id', id);
+      if (clearError) throw new Error(clearError.message);
+
+      const shares = splitEqually(toCents(amount), memberIds.length);
+      const { error } = await supabase.from('expense_splits').insert(
+        memberIds.map((userId, i) => ({
+          expense_id: id,
+          user_id: userId,
+          amount_owed: fromCents(shares[i]),
+        }))
+      );
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['splits'] });
+      qc.invalidateQueries({ queryKey: ['expense', variables.id] });
+    },
+  });
+}
+
+export function useDeleteExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // Splits go with it by cascade.
+      const { error } = await supabase.from('expenses').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['splits'] });
+    },
+  });
+}
+
+// --- the list ---------------------------------------------------------------
+
+export type GroceryItem = {
+  id: string;
+  name: string;
+  note: string;
+  added_by: string;
+  in_basket: boolean;
+  created_at: string;
+};
+
+export function useGroceryItems() {
+  return useQuery({
+    queryKey: ['grocery'],
+    queryFn: async () =>
+      unwrap(
+        await supabase
+          .from('grocery_items')
+          .select('id, name, note, added_by, in_basket, created_at')
+          .order('created_at')
+      ) as GroceryItem[],
+    // The one screen two people genuinely use at the same time, one adding
+    // from the sofa while the other is in the aisle.
+    refetchInterval: 15_000,
+  });
+}
+
+export function useAddGroceryItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ name, addedBy }: { name: string; addedBy: string }) => {
+      const { error } = await supabase
+        .from('grocery_items')
+        .insert({ name: name.trim(), added_by: addedBy });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['grocery'] }),
+  });
+}
+
+export function useToggleGroceryItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, inBasket }: { id: string; inBasket: boolean }) => {
+      const { error } = await supabase
+        .from('grocery_items')
+        .update({ in_basket: inBasket })
+        .eq('id', id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['grocery'] }),
+  });
+}
+
+export function useRemoveGroceryItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('grocery_items').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['grocery'] }),
+  });
+}
+
+/** Everything in the basket goes once the shop is logged. */
+export function useClearBasket() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('grocery_items').delete().eq('in_basket', true);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['grocery'] }),
   });
 }
 
@@ -313,11 +487,11 @@ export function useCreateResponsibility() {
     mutationFn: async ({
       name,
       startDate,
-      memberIds,
+      slots,
     }: {
       name: string;
       startDate: string;
-      memberIds: string[];
+      slots: { userId: string; order: number }[];
     }) => {
       const responsibility = unwrap(
         await supabase
@@ -328,10 +502,10 @@ export function useCreateResponsibility() {
       ) as { id: string };
 
       const { error } = await supabase.from('responsibility_members').insert(
-        memberIds.map((userId, i) => ({
+        slots.map((slot) => ({
           responsibility_id: responsibility.id,
-          user_id: userId,
-          rotation_order: i,
+          user_id: slot.userId,
+          rotation_order: slot.order,
         }))
       );
       if (error) throw new Error(error.message);
@@ -344,36 +518,33 @@ export function useCreateResponsibility() {
 /**
  * Bring the rotation in line with the house without destroying anything.
  *
- * This is what people actually want when they reach for "restart": the rota was
- * opened before everyone had claimed a seat, and the missing housemates need to
- * be in it. Adding them is not a reason to lose the swaps and sign-offs that
- * have already happened.
+ * Somebody claiming a seat after the rota opened belongs in the slot the house
+ * agreed, not on the end of the queue. Appending was fine while everyone
+ * arrived before it started and wrong the moment they did not: the last two to
+ * sign up would have cooked last forever.
  *
- * Existing members keep their rotation_order, so nobody who has already cooked
- * gets moved back to the front. New people are appended in roster order.
+ * Existing members are left alone, so nobody who has already cooked is moved.
  */
 export function useSyncRotationMembers(respId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (orderedUserIds: string[]) => {
+    mutationFn: async (slots: { userId: string; order: number }[]) => {
       const existing = unwrap(
         await supabase
           .from('responsibility_members')
-          .select('user_id, rotation_order')
+          .select('user_id')
           .eq('responsibility_id', respId!)
-      ) as { user_id: string; rotation_order: number }[];
+      ) as { user_id: string }[];
 
       const known = new Set(existing.map((m) => m.user_id));
-      const missing = orderedUserIds.filter((id) => !known.has(id));
+      const missing = slots.filter((slot) => !known.has(slot.userId));
       if (missing.length === 0) return 0;
 
-      const nextOrder = existing.reduce((max, m) => Math.max(max, m.rotation_order), -1) + 1;
-
       const { error } = await supabase.from('responsibility_members').insert(
-        missing.map((userId, i) => ({
+        missing.map((slot) => ({
           responsibility_id: respId,
-          user_id: userId,
-          rotation_order: nextOrder + i,
+          user_id: slot.userId,
+          rotation_order: slot.order,
         }))
       );
       if (error) throw new Error(error.message);
@@ -561,63 +732,5 @@ export function useCloseSwapRequest(respId: string | undefined) {
       if (error) throw new Error(error.message);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['swap-requests', respId] }),
-  });
-}
-
-// --- penalties --------------------------------------------------------------
-
-export function usePenalties() {
-  return useQuery({
-    queryKey: ['penalties'],
-    queryFn: async () =>
-      unwrap(
-        await supabase
-          .from('penalties')
-          .select('id, user_id, issued_by, responsibility_id, date, amount, reason, created_at')
-          .order('date', { ascending: false })
-      ) as Penalty[],
-  });
-}
-
-export function useIssuePenalty() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      userId,
-      issuedBy,
-      responsibilityId,
-      date,
-      reason,
-      amount = 10,
-    }: {
-      userId: string;
-      issuedBy: string;
-      responsibilityId: string | null;
-      date: string;
-      reason: string;
-      amount?: number;
-    }) => {
-      const { error } = await supabase.from('penalties').insert({
-        user_id: userId,
-        issued_by: issuedBy,
-        responsibility_id: responsibilityId,
-        date,
-        amount,
-        reason,
-      });
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['penalties'] }),
-  });
-}
-
-export function useRevokePenalty() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('penalties').delete().eq('id', id);
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['penalties'] }),
   });
 }

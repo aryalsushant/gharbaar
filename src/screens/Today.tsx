@@ -12,9 +12,7 @@ import {
   useConfirmCompletion,
   useCreateResponsibility,
   useHousehold,
-  useIssuePenalty,
   useOverrides,
-  usePenalties,
   useRequestSwap,
   useResponsibilities,
   useRoster,
@@ -22,10 +20,12 @@ import {
   useSwapRequests,
   useSyncRotationMembers,
 } from '../lib/db';
+import { longDate } from '../lib/dates';
 import { buildStrip, dayLabel, planSwap } from '../lib/duty';
 import { toDateKey } from '../lib/rotation';
 
-const STRIP_DAYS = 14;
+// A week. The strip is computed from today, so it rolls forward by itself.
+const STRIP_DAYS = 7;
 
 export function Today() {
   const { userId, signOut } = useAuth();
@@ -38,7 +38,6 @@ export function Today() {
   const overrides = useOverrides(duty?.id);
   const completions = useCompletions(duty?.id);
   const requests = useSwapRequests(duty?.id);
-  const penalties = usePenalties();
 
   const createDuty = useCreateResponsibility();
   const syncMembers = useSyncRotationMembers(duty?.id);
@@ -46,26 +45,49 @@ export function Today() {
   const applySwap = useApplySwap(duty?.id);
   const requestSwap = useRequestSwap(duty?.id);
   const closeRequest = useCloseSwapRequest(duty?.id);
-  const fine = useIssuePenalty();
 
-  const [picked, setPicked] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const todayKey = toDateKey(new Date());
+
+  /**
+   * The sign-off question only appears at 10:30pm.
+   *
+   * Asking at six in the evening invites an answer nobody can give yet, and a
+   * question sitting there all day is one people learn to tap without reading.
+   * Ticked every minute rather than read once, so the card appears on its own
+   * for anybody who left the app open.
+   */
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const tick = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(tick);
+  }, []);
+  const signOffOpen = now.getHours() * 60 + now.getMinutes() >= 22 * 60 + 30;
 
   const personOf = (id: string | null) => (id ? house.data?.find((p) => p.id === id) : undefined);
   const nameOf = (id: string | null) => personOf(id)?.display_name ?? (id ? 'Someone' : 'Nobody');
   const seatOf = (id: string | null) => personOf(id)?.roster_key ?? null;
   const photoOf = (id: string | null) => personOf(id)?.avatar_url ?? null;
 
-  // Roster order, always. Nobody gets to reorder the rota.
-  const houseInOrder = useMemo(
+  /**
+   * The cooking order comes from the roster and nothing in the app can change
+   * it. Each person carries their slot number, so somebody claiming a seat next
+   * week still lands where the house agreed rather than on the end.
+   */
+  const slots = useMemo(
     () =>
       (roster.data ?? [])
-        .map((seat) => house.data?.find((p) => p.roster_key === seat.key))
-        .filter((p): p is NonNullable<typeof p> => !!p),
+        .filter((seat) => seat.cook_order !== null)
+        .sort((a, b) => (a.cook_order ?? 0) - (b.cook_order ?? 0))
+        .flatMap((seat) => {
+          const person = house.data?.find((p) => p.roster_key === seat.key);
+          return person ? [{ person, order: seat.cook_order as number }] : [];
+        }),
     [roster.data, house.data]
   );
+
+  const houseInOrder = useMemo(() => slots.map((s) => s.person), [slots]);
 
   /**
    * Anyone holding a seat belongs in the rotation, so this happens by itself
@@ -79,8 +101,8 @@ export function Today() {
     if (syncMembers.isPending) return;
     const known = new Set(members.data.map((m) => m.user_id));
     if (houseInOrder.every((person) => known.has(person.id))) return;
-    syncMembers.mutate(houseInOrder.map((p) => p.id));
-  }, [duty, members.data, houseInOrder, syncMembers]);
+    syncMembers.mutate(slots.map((s) => ({ userId: s.person.id, order: s.order })));
+  }, [duty, members.data, houseInOrder, slots, syncMembers]);
 
   /**
    * Open the rota the first time anybody looks at the board, rather than making
@@ -88,27 +110,37 @@ export function Today() {
    * index on responsibilities.name decides it: the losers fail and re-read
    * rather than creating a second Dinner.
    */
+  const seatsTotal = roster.data?.length ?? 6;
+  const everybodyIn = houseInOrder.length >= seatsTotal;
+
   useEffect(() => {
     if (responsibilities.isLoading || duty) return;
-    if (houseInOrder.length === 0 || createDuty.isPending) return;
+    if (!everybodyIn || createDuty.isPending) return;
     createDuty.mutate(
       {
         name: 'Dinner',
         startDate: todayKey,
-        memberIds: houseInOrder.map((p) => p.id),
+        slots: slots.map((s) => ({ userId: s.person.id, order: s.order })),
       },
       { onError: () => void responsibilities.refetch() }
     );
-  }, [responsibilities, duty, houseInOrder, createDuty, todayKey]);
+  }, [responsibilities, duty, slots, everybodyIn, createDuty, todayKey]);
+
+  /**
+   * Never show days before the rota begins. getAssignee happily answers for
+   * them, since the modulo works backwards, but a cook for last Tuesday when
+   * the rotation starts next Monday is an answer to a question nobody asked.
+   */
+  const startsLater = !!duty && duty.rotation_start_date > todayKey;
+  const from = startsLater ? duty!.rotation_start_date : todayKey;
 
   const days = useMemo(() => {
     if (!duty || !members.data) return [];
-    return buildStrip(duty, members.data, overrides.data ?? [], todayKey, STRIP_DAYS);
-  }, [duty, members.data, overrides.data, todayKey]);
+    return buildStrip(duty, members.data, overrides.data ?? [], from, STRIP_DAYS);
+  }, [duty, members.data, overrides.data, from]);
 
   const tonight = days[0];
   const completionFor = (date: string) => completions.data?.find((c) => c.date === date);
-  const penaltyFor = (date: string) => penalties.data?.find((p) => p.date === date);
   const requestFor = (date: string) => requests.data?.find((r) => r.date === date);
 
   async function run(action: () => Promise<unknown>) {
@@ -127,7 +159,6 @@ export function Today() {
     run(async () => {
       await applySwap.mutateAsync(plan.rows);
       await closeRequest.mutateAsync(requestId);
-      setPicked(null);
     });
   }
 
@@ -140,9 +171,68 @@ export function Today() {
   }
 
   if (!duty) {
+    const waiting = (roster.data ?? []).filter(
+      (seat) => !houseInOrder.some((person) => person.roster_key === seat.key)
+    );
+
     return (
-      <div className="centered">
-        <p className="tag rise rise-1">Opening the kitchen</p>
+      <div className="centered wide">
+        <Nav />
+
+        <header className="rise rise-1">
+          <p className="tag figure">
+            {houseInOrder.length} of {seatsTotal} in
+          </p>
+          <h1 className="wordmark">
+            {everybodyIn ? 'Opening the kitchen' : 'Waiting for the house'}
+          </h1>
+          <p className="lede">
+            The rota starts once everyone has a seat, so the order matches the house
+            instead of whoever arrived first.
+          </p>
+        </header>
+
+        <section className="panel stack-lg rise rise-2">
+          <p className="tag">Here</p>
+          <ul className="roster-list">
+            {houseInOrder.map((person) => (
+              <li key={person.id}>
+                <span className="faced">
+                  <Avatar
+                    rosterKey={person.roster_key}
+                    name={person.display_name}
+                    url={person.avatar_url}
+                    size={26}
+                  />
+                  {person.display_name}
+                </span>
+                <span className="flag flag-done">in</span>
+              </li>
+            ))}
+          </ul>
+
+          {waiting.length > 0 && (
+            <>
+              <p className="tag" style={{ marginTop: 18 }}>Still to join</p>
+              <ul className="roster-list">
+                {waiting.map((seat) => (
+                  <li key={seat.key}>
+                    <span className="faced" style={{ opacity: 0.55 }}>
+                      <Avatar rosterKey={seat.key} name={seat.display_name} size={26} />
+                      {seat.display_name}
+                    </span>
+                    <span className="tag">waiting</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+
+        <p className="lede rise rise-3" style={{ maxWidth: 'none', marginTop: 20 }}>
+          The ledger works now. Log groceries, split them, settle up. Only the cooking
+          rota is waiting.
+        </p>
       </div>
     );
   }
@@ -150,11 +240,8 @@ export function Today() {
   // --- the board -----------------------------------------------------------
 
   const tonightDone = tonight ? completionFor(tonight.date) : undefined;
-  const tonightFined = tonight ? penaltyFor(tonight.date) : undefined;
   const iAmCooking = tonight?.assignee === userId;
 
-  const pickedDay = picked ? days.find((d) => d.date === picked) : null;
-  const pickedRequest = pickedDay ? requestFor(pickedDay.date) : undefined;
   const openRequests = (requests.data ?? []).filter((r) => r.date >= todayKey);
 
   return (
@@ -162,23 +249,32 @@ export function Today() {
       <Nav />
 
       <header className="rise rise-1">
-        <p className="tag figure">{todayKey}</p>
-        <h1 className="wordmark">
-          {iAmCooking ? 'You cook tonight' : `${nameOf(tonight?.assignee ?? null)} cooks tonight`}
-        </h1>
-        <p className="lede">Whoever cooks also cleans. Someone else signs it off.</p>
+        <p className="tag">{longDate(todayKey)}</p>
+        {startsLater ? (
+          <>
+            <h1 className="wordmark">Starts {longDate(duty.rotation_start_date)}</h1>
+            <p className="lede">
+              Nobody is cooking until then. Here is the order once it begins.
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="wordmark">
+              {iAmCooking ? 'You cook tonight' : `${nameOf(tonight?.assignee ?? null)} cooks tonight`}
+            </h1>
+            <p className="lede">Whoever cooks also cleans. Someone else signs it off.</p>
+          </>
+        )}
       </header>
 
-      {error && <p className="notice notice-bad rise rise-2">{error}</p>}
+      {error && startsLater && <p className="notice notice-bad rise rise-2">{error}</p>}
 
+      {!startsLater && (iAmCooking || signOffOpen || tonightDone) && (
       <section className="panel stack-lg rise rise-2">
+        {error && <p className="notice notice-bad">{error}</p>}
         {tonightDone ? (
           <p className="notice notice-good" style={{ marginBottom: 0 }}>
             Signed off by {nameOf(tonightDone.marked_by)}.
-          </p>
-        ) : tonightFined ? (
-          <p className="notice notice-bad" style={{ marginBottom: 0 }}>
-            Missed. <span className="figure">$10</span> charged by {nameOf(tonightFined.issued_by)}.
           </p>
         ) : iAmCooking ? (
           <>
@@ -208,46 +304,29 @@ export function Today() {
               </button>
             )}
           </>
-        ) : (
+        ) : !signOffOpen ? null : (
           <>
             <p className="tag">Did {nameOf(tonight?.assignee ?? null)} cook and clean?</p>
-            <div className="row" style={{ marginTop: 12 }}>
-              <button
-                className="btn"
-                disabled={confirm.isPending}
-                onClick={() =>
-                  run(() =>
-                    confirm.mutateAsync({
-                      date: tonight!.date,
-                      assignee: tonight!.assignee!,
-                      markedBy: userId!,
-                    })
-                  )
-                }
-              >
-                Yes, done
-              </button>
-              <button
-                className="btn btn-danger"
-                disabled={fine.isPending}
-                onClick={() =>
-                  run(() =>
-                    fine.mutateAsync({
-                      userId: tonight!.assignee!,
-                      issuedBy: userId!,
-                      responsibilityId: duty.id,
-                      date: tonight!.date,
-                      reason: 'Dinner not done',
-                    })
-                  )
-                }
-              >
-                No, charge $10
-              </button>
-            </div>
+            <button
+              className="btn"
+              style={{ marginTop: 12 }}
+              disabled={confirm.isPending}
+              onClick={() =>
+                run(() =>
+                  confirm.mutateAsync({
+                    date: tonight!.date,
+                    assignee: tonight!.assignee!,
+                    markedBy: userId!,
+                  })
+                )
+              }
+            >
+              Yes, done
+            </button>
           </>
         )}
       </section>
+      )}
 
       {/* Whoever is asking for cover, and the one tap that answers them. */}
       {openRequests.length > 0 && (
@@ -296,72 +375,17 @@ export function Today() {
       )}
 
       <section className="stack-lg rise rise-3">
-        <p className="tag">The fortnight</p>
+        <p className="tag">{startsLater ? 'The first week' : 'This week'}</p>
         <DayStrip
           days={days}
           todayKey={todayKey}
           nameOf={nameOf}
           seatOf={seatOf}
           photoOf={photoOf}
+          askedOn={(date) => !!requestFor(date)}
           doneOn={(date) => !!completionFor(date)}
-          finedOn={(date) => !!penaltyFor(date)}
-          onPick={(date) => setPicked(date === picked ? null : date)}
         />
       </section>
-
-      {pickedDay && (
-        <section className="panel stack-lg rise rise-1">
-          <div className="spread">
-            <div>
-              <p className="tag">{dayLabel(pickedDay.date, todayKey)}</p>
-              <h2 style={{ margin: 0 }}>{nameOf(pickedDay.assignee)}</h2>
-            </div>
-            <button className="link" onClick={() => setPicked(null)}>
-              Close
-            </button>
-          </div>
-
-          {pickedRequest ? (
-            pickedDay.assignee === userId ? (
-              <p className="lede" style={{ maxWidth: 'none' }}>
-                You have asked for cover on this night. It stays in the list above until
-                somebody takes it.
-              </p>
-            ) : (
-              <button
-                className="btn"
-                style={{ marginTop: 14 }}
-                disabled={applySwap.isPending}
-                onClick={() => takeOver(pickedDay.date, pickedRequest.id)}
-              >
-                I will take this night
-              </button>
-            )
-          ) : pickedDay.assignee === userId ? (
-            <button
-              className="btn btn-quiet"
-              style={{ marginTop: 14 }}
-              disabled={requestSwap.isPending}
-              onClick={() =>
-                run(() =>
-                  requestSwap.mutateAsync({
-                    date: pickedDay.date,
-                    requestedBy: userId!,
-                    note: '',
-                  })
-                )
-              }
-            >
-              I cannot cook this night
-            </button>
-          ) : (
-            <p className="lede" style={{ maxWidth: 'none' }}>
-              Only {nameOf(pickedDay.assignee)} can give this night away. Nobody gets
-              volunteered.
-            </p>
-          )}
-        </section>
-      )}
 
       <div className="stack-lg">{userId && <PushSetup userId={userId} />}</div>
 
