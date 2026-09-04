@@ -1,14 +1,16 @@
 # Gharbaar
 
+Design notes for whoever works on this next. The README covers setup and the
+hand-run checklist; this is the reasoning behind the shape of the code.
+
 Expense splitting and a rotating cook/clean duty for one household of six. A browser
 app (Vite, React, TypeScript) that installs as a PWA, with Supabase for Postgres,
 auth and RLS.
 
 ## Conventions
 
-- **No AI attribution anywhere.** Not in commit messages, code comments, docs, or PR
-  bodies. No "Co-Authored-By", no "Generated with", no mention of Claude or Anthropic.
-  Enforced by the `attribution` key in `.claude/settings.json`.
+- **Commit messages and PR bodies are plain prose.** No trailers, no tool names, no
+  badges. Say what changed and why.
 - **No em dashes.** Anywhere. Product copy, comments, docs, commit messages.
 - **Topic branch and a PR for every change**, never straight to `main`. Commits should
   be small and each one should stand on its own.
