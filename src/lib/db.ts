@@ -50,6 +50,21 @@ export type Responsibility = {
   rotation_start_date: string;
 };
 
+/**
+ * Dinner is the one rotation the board is built around: it opens itself once
+ * the house is full, the reminder function pings its cook, and the fairness
+ * count is of its sign-offs. Everything else in the table is a job.
+ */
+export const DINNER = 'Dinner';
+
+export function dinnerOf(list: Responsibility[] | undefined): Responsibility | undefined {
+  return list?.find((r) => r.name === DINNER);
+}
+
+export function jobsOf(list: Responsibility[] | undefined): Responsibility[] {
+  return (list ?? []).filter((r) => r.name !== DINNER);
+}
+
 export type ResponsibilityMember = {
   id: string;
   responsibility_id: string;
@@ -488,15 +503,17 @@ export function useCreateResponsibility() {
       name,
       startDate,
       slots,
+      frequency = 'daily',
     }: {
       name: string;
       startDate: string;
       slots: { userId: string; order: number }[];
+      frequency?: 'daily' | 'weekly';
     }) => {
       const responsibility = unwrap(
         await supabase
           .from('responsibilities')
-          .insert({ name: name.trim(), frequency: 'daily', rotation_start_date: startDate })
+          .insert({ name: name.trim(), frequency, rotation_start_date: startDate })
           .select('id')
           .single()
       ) as { id: string };
@@ -511,7 +528,52 @@ export function useCreateResponsibility() {
       if (error) throw new Error(error.message);
       return responsibility;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['responsibilities'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['responsibilities'] });
+      qc.invalidateQueries({ queryKey: ['rotation-members'] });
+    },
+  });
+}
+
+/** A job goes with its members, overrides and sign-offs, by cascade. */
+export function useDeleteResponsibility() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('responsibilities').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['responsibilities'] });
+      qc.invalidateQueries({ queryKey: ['rotation-members'] });
+      qc.invalidateQueries({ queryKey: ['completions'] });
+    },
+  });
+}
+
+/** Every rotation's members at once, for the screen that shows every job. */
+export function useAllRotationMembers() {
+  return useQuery({
+    queryKey: ['rotation-members', 'all'],
+    queryFn: async () =>
+      unwrap(
+        await supabase
+          .from('responsibility_members')
+          .select('id, responsibility_id, user_id, rotation_order, is_active')
+          .order('rotation_order')
+      ) as ResponsibilityMember[],
+  });
+}
+
+export function useAllCompletions() {
+  return useQuery({
+    queryKey: ['completions', 'all'],
+    queryFn: async () =>
+      unwrap(
+        await supabase
+          .from('responsibility_completions')
+          .select('id, responsibility_id, date, user_id, marked_by')
+      ) as (ResponsibilityCompletion & { responsibility_id: string })[],
   });
 }
 
@@ -594,6 +656,36 @@ export function useCompletions(respId: string | undefined) {
           .eq('responsibility_id', respId!)
       ) as ResponsibilityCompletion[],
     enabled: !!respId,
+  });
+}
+
+/**
+ * Sign off a job for one turn. The same rule as dinner, enforced by the same
+ * policy: whoever held it cannot be the one who says it is done.
+ */
+export function useConfirmJob() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      responsibilityId,
+      date,
+      assignee,
+      markedBy,
+    }: {
+      responsibilityId: string;
+      date: string;
+      assignee: string;
+      markedBy: string;
+    }) => {
+      const { error } = await supabase.from('responsibility_completions').insert({
+        responsibility_id: responsibilityId,
+        date,
+        user_id: assignee,
+        marked_by: markedBy,
+      });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['completions'] }),
   });
 }
 

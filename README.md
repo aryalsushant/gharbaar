@@ -137,4 +137,6 @@ There is no test suite and no CI, by design. This is the checklist.
       trade and nobody else moves.
 - [ ] Settle up with someone. Only the person being paid can record it.
 - [ ] Swap a day. The two people trade, and clearing it puts both back.
+- [ ] Add a weekly job for one flat. Only that flat's people take turns, the
+      holder changes on the start date's weekday, and somebody else signs it off.
 - [ ] Install to a home screen and receive a notification there.
