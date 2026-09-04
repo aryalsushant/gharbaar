@@ -1,6 +1,9 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  persistQueryClientRestore,
+  persistQueryClientSubscribe,
+} from '@tanstack/query-persist-client-core';
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
-import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
@@ -18,6 +21,10 @@ import './styles.css';
  * almost never changed since yesterday. So the last fetched copy of everything
  * is kept on the device and the board is drawn from it straight away, while the
  * real fetch runs behind it and replaces anything that moved.
+ *
+ * The restore happens before the first render, not alongside it. A provider
+ * that restores while rendering still paints one frame with nothing in it,
+ * and one frame of nothing is the flash this is here to remove.
  *
  * gcTime has to be at least as long as maxAge or the persisted copy is thrown
  * away on restore.
@@ -67,14 +74,25 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: A_WEEK }}>
-      <AuthProvider>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </AuthProvider>
-    </PersistQueryClientProvider>
-  </StrictMode>
-);
+async function boot() {
+  try {
+    await persistQueryClientRestore({ queryClient, persister, maxAge: A_WEEK });
+  } catch {
+    // A corrupt or missing cache is a slower open, not a broken one.
+  }
+  persistQueryClientSubscribe({ queryClient, persister });
+
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </AuthProvider>
+      </QueryClientProvider>
+    </StrictMode>
+  );
+}
+
+void boot();

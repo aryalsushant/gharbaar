@@ -21,7 +21,7 @@ import { Today } from './screens/Today';
  * the entrance would render an empty app.
  */
 export default function App() {
-  const { session, userId, loading } = useAuth();
+  const { userId, loading } = useAuth();
   const profile = useProfile(userId);
 
   const booting = loading || (!!userId && profile.isLoading);
@@ -34,7 +34,7 @@ export default function App() {
           <div className="centered">
             <p className="tag rise rise-1">Gharbaar</p>
           </div>
-        ) : !session || !profile.data?.roster_key ? (
+        ) : !userId || !profile.data?.roster_key ? (
           <Enter />
         ) : (
           <Routes>

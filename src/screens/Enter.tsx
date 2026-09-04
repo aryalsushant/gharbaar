@@ -9,7 +9,7 @@ import { isIOS, isInstalled } from '../lib/push';
 type Step = 'tiles' | 'email' | 'code';
 
 export function Enter() {
-  const { session, sendCode, verifyCode } = useAuth();
+  const { userId, sendCode, verifyCode } = useAuth();
   const roster = usePublicRoster();
   const claim = useClaimIdentity();
 
@@ -28,7 +28,7 @@ export function Enter() {
 
     // Already signed in and just taking a seat: no need to prove the inbox
     // twice. The binding check still runs inside claim_identity.
-    if (session) {
+    if (userId) {
       setBusy(true);
       try {
         await claim.mutateAsync(chosen.key);
