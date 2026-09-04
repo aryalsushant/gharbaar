@@ -446,15 +446,17 @@ h2 {
   }
 }
 
+/* Quick. The stagger used to run to nearly a second and a half, which read as
+   the screen still loading when it was already there. */
 .rise {
-  animation: surface 0.95s var(--ease-liquid) both;
+  animation: surface 0.45s var(--ease-liquid) both;
 }
 
-.rise-1 { animation-delay: 0.05s; }
-.rise-2 { animation-delay: 0.16s; }
-.rise-3 { animation-delay: 0.27s; }
-.rise-4 { animation-delay: 0.38s; }
-.rise-5 { animation-delay: 0.49s; }
+.rise-1 { animation-delay: 0s; }
+.rise-2 { animation-delay: 0.05s; }
+.rise-3 { animation-delay: 0.1s; }
+.rise-4 { animation-delay: 0.15s; }
+.rise-5 { animation-delay: 0.2s; }
 
 .row {
   display: flex;
