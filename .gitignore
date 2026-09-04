@@ -39,8 +39,8 @@ yarn-error.*
 .supabase/
 supabase/.temp/
 
-# claude local overrides
-.claude/settings.local.json
+# per-machine tooling config
+.claude/
 
 # typescript
 *.tsbuildinfo
