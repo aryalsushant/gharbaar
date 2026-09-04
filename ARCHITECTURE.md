@@ -58,6 +58,15 @@ future, with no cron job. A swap is two override rows, which is why deferral was
 chosen against: "cover for me and I will take your day" is expressible this way,
 whereas "everyone slides down a day" would need a queue walk and stored history.
 
+A job other than dinner is the same table with a chosen set of members and a
+`frequency`. For `weekly`, step 2 divides the day count by seven first, so one
+person holds the job for a week from the start date's weekday. Sign-offs for a
+weekly job are recorded against the first day of that week (`turnStart()`), so
+a week is signed off once. `dinnerOf()` in `db.ts` is how the board and the
+fairness count find the one rotation that is dinner. The reminder function
+takes the oldest row, which is dinner because it opens before any job can be
+added.
+
 Dates are local-calendar `YYYY-MM-DD` keys. Never use `toISOString()` on them, it
 shifts the day backwards for anyone west of UTC, which is all six of them.
 
