@@ -27,13 +27,19 @@ const queryClient = new QueryClient({
  * reloads it. That is the gap where the app looks like it has not been updated
  * even though the new files are already on the device.
  *
+ * Only a replaced worker is worth a reload. The very first install also fires
+ * controllerchange when the new worker claims the page, and reloading then
+ * throws away a page that is already current, which on a first open meant the
+ * splash played, the page reloaded, and the splash played again.
+ *
  * The guard matters: without it, a worker that claims control during startup
  * can reload the page in a loop.
  */
 if ('serviceWorker' in navigator) {
+  const hadController = !!navigator.serviceWorker.controller;
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloading) return;
+    if (!hadController || reloading) return;
     reloading = true;
     window.location.reload();
   });
