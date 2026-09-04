@@ -1,4 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
+import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { supabase } from './supabase';
@@ -19,6 +20,7 @@ const AuthContext = createContext<AuthValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -64,9 +66,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut: async () => {
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
+        // The cached copy of the house goes with the session, so the next
+        // person to sign in on this phone does not open on somebody else's
+        // view of it.
+        queryClient.clear();
       },
     }),
-    [session, loading]
+    [session, loading, queryClient]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

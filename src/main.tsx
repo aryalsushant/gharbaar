@@ -1,4 +1,6 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
@@ -7,6 +9,21 @@ import App from './App';
 import { AuthProvider } from './lib/auth';
 import './styles.css';
 
+/**
+ * Open on what was there last time, then catch up.
+ *
+ * Every open used to wait on three round trips in a row before anything
+ * showed: the profile, then the house and the rota, then the rota's members.
+ * On a phone that is a second or two of a blank screen for data that has
+ * almost never changed since yesterday. So the last fetched copy of everything
+ * is kept on the device and the board is drawn from it straight away, while the
+ * real fetch runs behind it and replaces anything that moved.
+ *
+ * gcTime has to be at least as long as maxAge or the persisted copy is thrown
+ * away on restore.
+ */
+const A_WEEK = 7 * 24 * 60 * 60 * 1000;
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -14,9 +31,15 @@ const queryClient = new QueryClient({
       // window focus makes the balances flicker on a phone that keeps waking.
       refetchOnWindowFocus: false,
       staleTime: 30_000,
+      gcTime: A_WEEK,
       retry: 1,
     },
   },
+});
+
+const persister = createSyncStoragePersister({
+  storage: window.localStorage,
+  key: 'gharbaar-cache',
 });
 
 /**
@@ -46,12 +69,12 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: A_WEEK }}>
       <AuthProvider>
         <BrowserRouter>
           <App />
         </BrowserRouter>
       </AuthProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   </StrictMode>
 );
