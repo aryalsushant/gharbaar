@@ -15,7 +15,14 @@ export type Responsibility = {
   id: string;
   name: string;
   rotation_start_date: string; // YYYY-MM-DD
+  /** 'daily' turns every day. 'weekly' holds for seven days from the start. */
+  frequency?: string;
 };
+
+/** How many days one turn lasts. */
+export function periodDays(responsibility: Pick<Responsibility, 'frequency'>): number {
+  return responsibility.frequency === 'weekly' ? 7 : 1;
+}
 
 export type Override = {
   date: string; // YYYY-MM-DD
@@ -49,11 +56,12 @@ export function daysBetween(startKey: string, endKey: string): number {
  * Who owns this responsibility on this date?
  *
  *   1. An explicit override for that date always wins (this is the swap feature).
- *   2. Otherwise: index = daysSinceStart mod activeMemberCount, over members
- *      sorted by rotation_order.
+ *   2. Otherwise: index = floor(daysSinceStart / periodDays) mod activeMemberCount,
+ *      over members sorted by rotation_order. For a daily job that is simply
+ *      daysSinceStart; a weekly one holds each person for seven days.
  *
  * Returns null when there are no active members. Dates before the rotation
- * start date still resolve — JS `%` yields negatives, so the result is
+ * start date still resolve, since JS `%` yields negatives and the result is
  * normalised back into range.
  */
 export function getAssignee(
@@ -72,8 +80,28 @@ export function getAssignee(
   if (active.length === 0) return null;
 
   const days = daysBetween(responsibility.rotation_start_date, dateKey);
-  const index = ((days % active.length) + active.length) % active.length;
+  const turn = Math.floor(days / periodDays(responsibility));
+  const index = ((turn % active.length) + active.length) % active.length;
   return active[index].user_id;
+}
+
+/** The date key `days` days after `key`. Negative goes backwards. */
+export function shiftDays(key: string, days: number): string {
+  const d = fromDateKey(key);
+  return toDateKey(new Date(d.getFullYear(), d.getMonth(), d.getDate() + days));
+}
+
+/**
+ * The first day of the turn that contains `dateKey`. For a daily job that is
+ * the day itself; for a weekly one it is the most recent day that falls on the
+ * start date's weekday. Completions are recorded against this, so a week's job
+ * is signed off once, not seven times.
+ */
+export function turnStart(responsibility: Responsibility, dateKey: string): string {
+  const period = periodDays(responsibility);
+  const days = daysBetween(responsibility.rotation_start_date, dateKey);
+  const into = ((days % period) + period) % period;
+  return shiftDays(dateKey, -into);
 }
 
 /** The next `count` days starting at `startKey`, as date keys. */
