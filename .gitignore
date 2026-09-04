@@ -39,9 +39,6 @@ yarn-error.*
 .supabase/
 supabase/.temp/
 
-# per-machine tooling config
-.claude/
-
 # typescript
 *.tsbuildinfo
 
