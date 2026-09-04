@@ -6,6 +6,7 @@ import { Nav } from '../components/Nav';
 import { computeBalances, formatMoney } from '../lib/balances';
 import { APARTMENTS } from '../lib/categories';
 import {
+  dinnerOf,
   useCompletions,
   useExpenses,
   useHousehold,
@@ -26,7 +27,7 @@ export function People() {
 
   const roster = useRoster();
   const responsibilities = useResponsibilities();
-  const completions = useCompletions(responsibilities.data?.[0]?.id);
+  const completions = useCompletions(dinnerOf(responsibilities.data)?.id);
 
   const memberIds = useMemo(() => (house.data ?? []).map((p) => p.id), [house.data]);
 

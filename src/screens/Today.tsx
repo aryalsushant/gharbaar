@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { Avatar } from '../components/Avatar';
 import { DayStrip } from '../components/DayStrip';
@@ -6,6 +7,10 @@ import { Nav } from '../components/Nav';
 import { PushSetup } from '../components/PushSetup';
 import { useAuth } from '../lib/auth';
 import {
+  DINNER,
+  dinnerOf,
+  jobsOf,
+  useAllRotationMembers,
   useApplySwap,
   useCloseSwapRequest,
   useCompletions,
@@ -34,8 +39,10 @@ export function Today() {
   const roster = useRoster();
   const responsibilities = useResponsibilities();
 
-  const duty = responsibilities.data?.[0];
+  const duty = dinnerOf(responsibilities.data);
   const members = useRotationMembers(duty?.id);
+  const jobs = jobsOf(responsibilities.data);
+  const jobMembers = useAllRotationMembers();
   const overrides = useOverrides(duty?.id);
   const completions = useCompletions(duty?.id);
   const requests = useSwapRequests(duty?.id);
@@ -119,7 +126,7 @@ export function Today() {
     if (!everybodyIn || createDuty.isPending) return;
     createDuty.mutate(
       {
-        name: 'Dinner',
+        name: DINNER,
         startDate: todayKey,
         slots: slots.map((s) => ({ userId: s.person.id, order: s.order })),
       },
@@ -263,8 +270,8 @@ export function Today() {
         </section>
 
         <p className="lede rise rise-3" style={{ maxWidth: 'none', marginTop: 20 }}>
-          The ledger works now. Log groceries, split them, settle up. Only the cooking
-          rota is waiting.
+          The ledger works now. Log groceries, split them, settle up. So do the other{' '}
+          <Link className="link" to="/jobs">jobs</Link>. Only the cooking rota is waiting.
         </p>
       </div>
     );
@@ -442,6 +449,43 @@ export function Today() {
           askedOn={(date) => !!requestFor(date)}
           doneOn={(date) => !!completionFor(date)}
         />
+      </section>
+
+      {/* The other jobs, at a glance. Whose turn, and nothing else; the jobs
+          screen has the sign-off and the rest. */}
+      <section className="stack-lg rise rise-4">
+        <div className="spread">
+          <p className="tag">Other jobs</p>
+          <Link className="link" to="/jobs">
+            {jobs.length > 0 ? 'All jobs' : 'Add one'}
+          </Link>
+        </div>
+        {jobs.length > 0 && (
+          <ul className="roster-list" style={{ marginTop: 10 }}>
+            {jobs.map((job) => {
+              const holder = getAssignee(
+                job,
+                (jobMembers.data ?? []).filter((m) => m.responsibility_id === job.id),
+                [],
+                todayKey
+              );
+              return (
+                <li key={job.id}>
+                  <span className="faced">
+                    <Avatar
+                      rosterKey={seatOf(holder)}
+                      name={nameOf(holder)}
+                      url={photoOf(holder)}
+                      size={26}
+                    />
+                    {holder === userId ? 'You' : nameOf(holder)}
+                  </span>
+                  <span className="tag">{job.name}</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
 
       <div className="stack-lg">{userId && <PushSetup userId={userId} />}</div>

@@ -8,6 +8,7 @@ import { computeBalances, formatMoney, settleUp } from '../lib/balances';
 import { dateKeyOf, mediumDate } from '../lib/dates';
 import { fairnessNote, standings } from '../lib/fairness';
 import {
+  dinnerOf,
   useCompletions,
   useExpenses,
   useHousehold,
@@ -34,7 +35,7 @@ export function Person() {
   const splits = useSplits();
   const responsibilities = useResponsibilities();
   const roster = useRoster();
-  const completions = useCompletions(responsibilities.data?.[0]?.id);
+  const completions = useCompletions(dinnerOf(responsibilities.data)?.id);
   const settlements = useSettlements();
   const record = useRecordSettlement();
 
