@@ -5,7 +5,7 @@ import { Avatar } from '../components/Avatar';
 import { Nav } from '../components/Nav';
 import { useAuth } from '../lib/auth';
 import { computeBalances, formatMoney, settleUp } from '../lib/balances';
-import { mediumDate } from '../lib/dates';
+import { dateKeyOf, mediumDate } from '../lib/dates';
 import { fairnessNote, standings } from '../lib/fairness';
 import {
   useCompletions,
@@ -82,7 +82,7 @@ export function Person() {
   const activity = useMemo<Entry[]>(() => {
     const entries: Entry[] = [
       ...paidExpenses.map((e) => ({
-        date: e.created_at.slice(0, 10),
+        date: dateKeyOf(e.created_at),
         kind: 'paid' as const,
         text: e.description || 'Groceries',
         amount: Number(e.amount),
