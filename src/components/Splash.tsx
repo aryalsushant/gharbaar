@@ -2,7 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Avatar } from './Avatar';
 
-const RUN_MS = 4800;
+/**
+ * How long the splash stays before it starts to fade.
+ *
+ * The drop lands at 1.15s and the name has fully surfaced by about 2.7s, so
+ * this is the first moment nothing is still arriving. It used to be 4.8s, which
+ * was two more seconds of a finished picture that people sat through on every
+ * open.
+ */
+const RUN_MS = 2700;
+const FADE_MS = 450;
 
 type Person = {
   display_name: string;
@@ -29,14 +38,23 @@ export function Splash({ onDone, person }: { onDone: () => void; person?: Person
   const played = useRef(false);
   const ctxRef = useRef<AudioContext | null>(null);
 
+  // Read through a ref so the clock starts once, on mount. Keying the effect
+  // on the callback restarted it every time the parent re-rendered, and the
+  // parent re-renders as the session and then the profile arrive, which on a
+  // cold open pushed the whole thing out well past its own length.
+  const onDoneRef = useRef(onDone);
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
+
   useEffect(() => {
     const fade = window.setTimeout(() => setLeaving(true), RUN_MS);
-    const done = window.setTimeout(onDone, RUN_MS + 600);
+    const done = window.setTimeout(() => onDoneRef.current(), RUN_MS + FADE_MS);
     return () => {
       window.clearTimeout(fade);
       window.clearTimeout(done);
     };
-  }, [onDone]);
+  }, []);
 
   const impact = useCallback(() => {
     if (played.current) return;

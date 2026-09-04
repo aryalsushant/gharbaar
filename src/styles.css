@@ -168,8 +168,12 @@ body {
 /* ---------------------------------------------------------------------------
    Splash
    One drop, and what it does to still water. Everything shares the same easing
-   and the same 3.2s, because water that moves to several different clocks at
+   and the same clock, because water that moves to several different clocks at
    once is what made the last version read as artificial.
+
+   The whole thing is over in about three seconds: the drop lands at 1.15s, the
+   pool has settled by 1.9s, and the name has surfaced by 2.7s. The text used to
+   trail in a second later than that, which is what made it feel long.
    --------------------------------------------------------------------------- */
 
 .splash {
@@ -178,7 +182,7 @@ body {
   z-index: 40;
   overflow: hidden;
   background: radial-gradient(115% 85% at 50% 46%, #0d2a3d 0%, #061620 52%, #020a11 100%);
-  transition: opacity 0.6s var(--ease-liquid);
+  transition: opacity 0.45s var(--ease-liquid);
 }
 
 .splash.is-leaving {
@@ -359,7 +363,7 @@ body {
    arrives with the impact, slightly small, and settles. */
 .splash-mark {
   width: clamp(104px, 30vw, 140px);
-  animation: emerge 1.6s cubic-bezier(0.16, 0.7, 0.32, 1) 1.7s both;
+  animation: emerge 1.1s cubic-bezier(0.16, 0.7, 0.32, 1) 1.35s both;
 }
 
 .splash-mark svg {
@@ -382,7 +386,7 @@ body {
 /* The same emerging as the mark, ringed so the face reads as the thing the
    drop landed on rather than a photo placed on top of it. */
 .splash-face {
-  animation: emerge 1.6s cubic-bezier(0.16, 0.7, 0.32, 1) 1.7s both;
+  animation: emerge 1.1s cubic-bezier(0.16, 0.7, 0.32, 1) 1.35s both;
 }
 
 .splash-face .avatar {
@@ -403,12 +407,12 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: emerge 1.5s cubic-bezier(0.16, 0.7, 0.32, 1) 2s both;
+  animation: emerge 1s cubic-bezier(0.16, 0.7, 0.32, 1) 1.55s both;
 }
 
 .splash-sub {
   margin: 4px 0 0;
-  animation: emerge 1.5s cubic-bezier(0.16, 0.7, 0.32, 1) 2.25s both;
+  animation: emerge 1s cubic-bezier(0.16, 0.7, 0.32, 1) 1.7s both;
 }
 
 /* Reduced motion gets the settled picture: no drop, no rings, nothing moving. */

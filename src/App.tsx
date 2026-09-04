@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { Splash } from './components/Splash';
@@ -40,9 +40,7 @@ export default function App() {
 
   const booting = loading || (!!userId && profile.isLoading);
 
-  function dismissSplash() {
-    setSplashing(false);
-  }
+  const dismissSplash = useCallback(() => setSplashing(false), []);
 
   // Coming back after being away is opening the app, even when the page never
   // reloaded.
