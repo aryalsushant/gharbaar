@@ -11,6 +11,7 @@ import {
   useHousehold,
   useResponsibilities,
   useRoster,
+  useSettlements,
   useSplits,
 } from '../lib/db';
 import { fairnessNote, standings } from '../lib/fairness';
@@ -19,6 +20,7 @@ export function People() {
   const house = useHousehold();
   const expenses = useExpenses();
   const splits = useSplits();
+  const settlements = useSettlements();
 
   const [flat, setFlat] = useState<string | null>(null);
 
@@ -40,9 +42,12 @@ export function People() {
   const everybodyIn = (house.data?.length ?? 0) >= (roster.data?.length ?? 6);
   const { byPerson } = standings(completions.data ?? [], memberIds);
 
+  // Settlements count here as they do everywhere else. Leaving them out meant
+  // this page kept saying somebody owed money after it had been handed over,
+  // while the ledger and their own card said square.
   const balances = useMemo(
-    () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds, []),
-    [expenses.data, splits.data, memberIds]
+    () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds, settlements.data ?? []),
+    [expenses.data, splits.data, memberIds, settlements.data]
   );
 
   return (

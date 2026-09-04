@@ -6,7 +6,7 @@ import { Nav } from '../components/Nav';
 import { useAuth } from '../lib/auth';
 import { computeBalances, formatMoney, settleUp } from '../lib/balances';
 import { categoryLabel } from '../lib/categories';
-import { mediumDate } from '../lib/dates';
+import { dateKeyOf, mediumDate } from '../lib/dates';
 import {
   useExpenses,
   useHousehold,
@@ -230,7 +230,7 @@ export function Money() {
                     className={`expense-row${open ? ' is-open' : ''}`}
                     onClick={() => setOpened(open ? null : expense.id)}
                   >
-                    <span className="strip-when tag">{mediumDate(expense.created_at.slice(0, 10))}</span>
+                    <span className="strip-when tag">{mediumDate(dateKeyOf(expense.created_at))}</span>
                     <span className="strip-who">
                       {expense.description || categoryLabel(expense.category)}
                     </span>

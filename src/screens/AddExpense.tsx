@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { Avatar } from '../components/Avatar';
@@ -55,25 +55,45 @@ export function AddExpense() {
   }, [editing, loaded, existing.data]);
 
   /**
-   * Who shares this follows from the category, and is recomputed whenever it
-   * changes. Leaving a stale selection behind is how a flat's internet bill
-   * ends up split six ways: the person picked Internet, chose F7, and the four
-   * names from the previous grocery run were still ticked.
+   * Who shares this follows from the category and the apartment, and is
+   * recomputed when either is picked. Leaving a stale selection behind is how
+   * a flat's internet bill ends up split six ways: the person picked Internet,
+   * chose F7, and the four names from the previous grocery run were still
+   * ticked.
+   *
+   * It happens in the handlers rather than in an effect. An effect also fired
+   * once the row being corrected had loaded, and put all six people back on an
+   * expense that had been split four ways, so every edit silently changed who
+   * owed what.
    */
+  const sharersFor = (key: string, flat: string | null) =>
+    !categoryOf(key)!.perApartment
+      ? everyone.map((p) => p.id)
+      : flat
+        ? everyone.filter((p) => p.apartment === flat).map((p) => p.id)
+        : [];
+
+  function pickCategory(key: string) {
+    const flat = categoryOf(key)!.perApartment ? apartment : null;
+    setCategory(key);
+    setApartment(flat);
+    setSharedBy(sharersFor(key, flat));
+  }
+
+  function pickApartment(flat: string) {
+    setApartment(flat);
+    setSharedBy(sharersFor(category, flat));
+  }
+
+  // A new expense starts split across the whole house, once the house is known.
+  const seeded = useRef(false);
   useEffect(() => {
-    if (everyone.length === 0) return;
-    // While an existing expense is still loading, leave the selection alone or
-    // it overwrites what we are about to read back.
-    if (editing && !loaded) return;
-    if (!chosen.perApartment) {
-      setSharedBy(everyone.map((p) => p.id));
-      setApartment(null);
-      return;
-    }
-    setSharedBy(
-      apartment ? everyone.filter((p) => p.apartment === apartment).map((p) => p.id) : []
-    );
-  }, [chosen.perApartment, apartment, everyone, editing, loaded]);
+    if (editing || seeded.current || everyone.length === 0) return;
+    seeded.current = true;
+    setSharedBy(sharersFor(category, apartment));
+    // Only the first arrival of the house seeds it; later changes are the
+    // person's own.
+  }, [editing, everyone]);
 
   const cents = toCents(Number(amount) || 0);
 
@@ -140,7 +160,7 @@ export function AddExpense() {
               key={c.key}
               type="button"
               className={`chip${category === c.key ? ' is-on' : ''}`}
-              onClick={() => setCategory(c.key)}
+              onClick={() => pickCategory(c.key)}
             >
               {c.label}
             </button>
@@ -156,7 +176,7 @@ export function AddExpense() {
                   key={flat}
                   type="button"
                   className={`chip${apartment === flat ? ' is-on' : ''}`}
-                  onClick={() => setApartment(flat)}
+                  onClick={() => pickApartment(flat)}
                 >
                   {flat}
                 </button>

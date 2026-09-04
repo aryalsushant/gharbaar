@@ -11,6 +11,19 @@
  * UTC, which is all six of them.
  */
 
+import { toDateKey } from './rotation';
+
+/**
+ * The local calendar day of a timestamp from the database.
+ *
+ * Postgres hands back created_at in UTC, and slicing the first ten characters
+ * off it gives the UTC day, which after about seven in the evening here is
+ * already tomorrow. Read it as a Date and take the local fields instead.
+ */
+export function dateKeyOf(timestamp: string): string {
+  return toDateKey(new Date(timestamp));
+}
+
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',

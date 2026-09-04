@@ -19,10 +19,11 @@ import {
   useRotationMembers,
   useSwapRequests,
   useSyncRotationMembers,
+  type SwapRequest,
 } from '../lib/db';
 import { longDate } from '../lib/dates';
 import { buildStrip, dayLabel, planSwap } from '../lib/duty';
-import { toDateKey } from '../lib/rotation';
+import { fromDateKey, getAssignee, toDateKey } from '../lib/rotation';
 
 // A week. The strip is computed from today, so it rolls forward by itself.
 const STRIP_DAYS = 7;
@@ -143,6 +144,23 @@ export function Today() {
   const completionFor = (date: string) => completions.data?.find((c) => c.date === date);
   const requestFor = (date: string) => requests.data?.find((r) => r.date === date);
 
+  /**
+   * Last night can still be signed off.
+   *
+   * Nobody is awake at half ten every night, and a dinner that was cooked but
+   * not confirmed used to vanish at midnight, with no way to say so afterwards.
+   * That then read as the cook being a night behind, which is the counter
+   * accusing somebody of the app's own gap.
+   */
+  const lastNight = useMemo(() => {
+    if (!duty || !members.data || startsLater) return null;
+    const today = fromDateKey(todayKey);
+    const date = toDateKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1));
+    if (date < duty.rotation_start_date) return null;
+    const assignee = getAssignee(duty, members.data, overrides.data ?? [], date);
+    return assignee ? { date, assignee } : null;
+  }, [duty, members.data, overrides.data, startsLater, todayKey]);
+
   async function run(action: () => Promise<unknown>) {
     setError(null);
     try {
@@ -152,13 +170,28 @@ export function Today() {
     }
   }
 
-  /** Taking somebody's night: apply the trade, then close the ask. */
-  function takeOver(date: string, requestId: string) {
-    const plan = planSwap(duty!, members.data ?? [], overrides.data ?? [], date, userId!);
-    if (!plan) return;
+  /**
+   * Taking somebody's night: apply the trade, then close the ask.
+   *
+   * The overrides are re-read first. Two people can press this within seconds
+   * of each other, and planning from what this phone loaded a minute ago would
+   * trade the asker out twice. If somebody else has already taken it, the ask
+   * is stale and is cleared rather than acted on.
+   */
+  function takeOver(request: SwapRequest) {
     run(async () => {
+      const fresh = (await overrides.refetch()).data ?? overrides.data ?? [];
+      const current = getAssignee(duty!, members.data ?? [], fresh, request.date);
+      if (current !== request.requested_by) {
+        await closeRequest.mutateAsync(request.id);
+        throw new Error(
+          `${nameOf(request.requested_by)} is no longer cooking that night. Somebody else got there first.`
+        );
+      }
+      const plan = planSwap(duty!, members.data ?? [], fresh, request.date, userId!);
+      if (!plan) return;
       await applySwap.mutateAsync(plan.rows);
-      await closeRequest.mutateAsync(requestId);
+      await closeRequest.mutateAsync(request.id);
     });
   }
 
@@ -267,11 +300,13 @@ export function Today() {
         )}
       </header>
 
-      {error && startsLater && <p className="notice notice-bad rise rise-2">{error}</p>}
+      {/* One place for errors, whatever raised them. They used to live inside
+          the sign-off panel, so a failed cover or a refused sign-off outside
+          the sign-off window happened in silence. */}
+      {error && <p className="notice notice-bad rise rise-2">{error}</p>}
 
       {!startsLater && (iAmCooking || signOffOpen || tonightDone) && (
       <section className="panel stack-lg rise rise-2">
-        {error && <p className="notice notice-bad">{error}</p>}
         {tonightDone ? (
           <p className="notice notice-good" style={{ marginBottom: 0 }}>
             Signed off by {nameOf(tonightDone.marked_by)}.
@@ -328,6 +363,28 @@ export function Today() {
       </section>
       )}
 
+      {lastNight && !completionFor(lastNight.date) && lastNight.assignee !== userId && (
+        <section className="panel stack-lg rise rise-2">
+          <p className="tag">Did {nameOf(lastNight.assignee)} cook and clean last night?</p>
+          <button
+            className="btn btn-small"
+            style={{ marginTop: 12 }}
+            disabled={confirm.isPending}
+            onClick={() =>
+              run(() =>
+                confirm.mutateAsync({
+                  date: lastNight.date,
+                  assignee: lastNight.assignee,
+                  markedBy: userId!,
+                })
+              )
+            }
+          >
+            Yes, done
+          </button>
+        </section>
+      )}
+
       {/* Whoever is asking for cover, and the one tap that answers them. */}
       {openRequests.length > 0 && (
         <section className="panel panel-ask stack-lg rise rise-3">
@@ -360,7 +417,7 @@ export function Today() {
                   <button
                     className="btn btn-small"
                     disabled={applySwap.isPending || closeRequest.isPending}
-                    onClick={() => takeOver(request.date, request.id)}
+                    onClick={() => takeOver(request)}
                   >
                     I will
                   </button>
