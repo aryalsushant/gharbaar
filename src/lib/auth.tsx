@@ -17,21 +17,53 @@ type AuthValue = {
 
 const AuthContext = createContext<AuthValue | null>(null);
 
+/**
+ * Who was signed in last time, remembered by this app rather than read back
+ * out of the auth library's storage.
+ *
+ * Reading the session is asynchronous, and until it resolves the app does not
+ * know whether to draw the house or the front door, so it drew neither. That
+ * was a frame or more of nothing on every open. Knowing the user id at the
+ * first render, together with the cached profile, means the house is the very
+ * first thing painted. If the session turns out to be gone, the front door
+ * follows a moment later, which is the right order of surprises.
+ */
+const KNOWN_USER = 'gharbaar-user';
+
+function readKnownUser(): string | null {
+  try {
+    return window.localStorage.getItem(KNOWN_USER);
+  } catch {
+    return null;
+  }
+}
+
+function writeKnownUser(id: string | null) {
+  try {
+    if (id) window.localStorage.setItem(KNOWN_USER, id);
+    else window.localStorage.removeItem(KNOWN_USER);
+  } catch {
+    // Private mode, or storage full. The next open is slower, nothing worse.
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [knownUser, setKnownUser] = useState<string | null>(readKnownUser);
+  const [loading, setLoading] = useState(() => readKnownUser() === null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+    const take = (next: Session | null) => {
       setSession(next);
+      setKnownUser(next?.user.id ?? null);
+      writeKnownUser(next?.user.id ?? null);
       setLoading(false);
-    });
+    };
+
+    supabase.auth.getSession().then(({ data }) => take(data.session));
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => take(next));
 
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -39,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthValue>(
     () => ({
       session,
-      userId: session?.user.id ?? null,
+      userId: session?.user.id ?? knownUser,
       loading,
 
       /**
@@ -72,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         queryClient.clear();
       },
     }),
-    [session, loading, queryClient]
+    [session, knownUser, loading, queryClient]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
