@@ -29,8 +29,7 @@ const queryClient = new QueryClient({
  *
  * Only a replaced worker is worth a reload. The very first install also fires
  * controllerchange when the new worker claims the page, and reloading then
- * throws away a page that is already current, which on a first open meant the
- * splash played, the page reloaded, and the splash played again.
+ * throws away a page that is already current, so a first open loaded twice.
  *
  * The guard matters: without it, a worker that claims control during startup
  * can reload the page in a loop.
