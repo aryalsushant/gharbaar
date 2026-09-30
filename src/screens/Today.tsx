@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { Avatar } from '../components/Avatar';
+import { ChoreRound, MyChores } from '../components/Chores';
 import { DayStrip } from '../components/DayStrip';
 import { Nav } from '../components/Nav';
 import { PushSetup } from '../components/PushSetup';
@@ -219,6 +220,8 @@ export function Today() {
       <div className="centered wide">
         <Nav />
 
+        <MyChores />
+
         <header className="rise rise-1">
           <p className="tag figure">
             {houseInOrder.length} of {seatsTotal} in
@@ -269,6 +272,8 @@ export function Today() {
           )}
         </section>
 
+        <ChoreRound />
+
         <p className="lede rise rise-3" style={{ maxWidth: 'none', marginTop: 20 }}>
           The ledger works now. Log groceries, split them, settle up. So do the other{' '}
           <Link className="link" to="/jobs">jobs</Link>. Only the cooking rota is waiting.
@@ -287,6 +292,8 @@ export function Today() {
   return (
     <div className="centered wide">
       <Nav />
+
+      <MyChores />
 
       <header className="rise rise-1">
         <p className="tag">{longDate(todayKey)}</p>
@@ -450,6 +457,8 @@ export function Today() {
           doneOn={(date) => !!completionFor(date)}
         />
       </section>
+
+      <ChoreRound />
 
       {/* The other jobs, at a glance. Whose turn, and nothing else; the jobs
           screen has the sign-off and the rest. */}
