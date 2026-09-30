@@ -12,26 +12,31 @@ import {
 import { toDateKey } from '../lib/rotation';
 
 /**
- * The nightly round: six fixed jobs, one per person, answered by whoever owns
- * them.
+ * A round: a list of jobs the house agreed to do on one particular day, one
+ * each, answered by whoever owns them.
  *
- * Split in two on purpose. Your own corner belongs at the very top of the
- * board, above the cooking, because it is the one thing on the screen that is
- * asking you to do something. Everybody else's belongs further down, as a
- * glance, because a list of five jobs that are not yours is information rather
- * than a request.
+ * Not a rota, and this is the whole point of it. Dinner turns every day because
+ * somebody has to cook every day. A clean up is a thing the house decides to do
+ * on a Tuesday, and asking the same six questions every morning afterwards is
+ * how a question becomes wallpaper. On a day with no round, both halves of this
+ * render nothing and the board does not mention it.
+ *
+ * Split in two on purpose. Your own job belongs at the very top of the board,
+ * above the cooking, because it is the one thing on the screen asking you to do
+ * something. Everybody else's belongs further down, as a glance, because five
+ * jobs that are not yours are information rather than a request.
  *
  * Both halves read the same three queries. React Query hands out one copy of
  * each, so this costs nothing over doing it in one component and saves passing
  * six props down the board.
  */
 
-/** Today's answers, keyed the way both halves want to look them up. */
+/** Today's round and today's answers, keyed the way both halves want them. */
 function useRound() {
   const { userId } = useAuth();
   const todayKey = toDateKey(new Date());
 
-  const chores = useChores();
+  const chores = useChores(todayKey);
   const checks = useChoreChecks(todayKey);
   const house = useHousehold();
   const roster = useRoster();
@@ -58,7 +63,7 @@ function useRound() {
   };
 }
 
-/** Your corner of the kitchen, and the two ways to answer for it. */
+/** Your job in today's round, and the two ways to answer for it. */
 export function MyChores() {
   const { userId, todayKey, chores, broken, answerTo, me } = useRound();
   const mark = useMarkChore(todayKey);
@@ -75,7 +80,7 @@ export function MyChores() {
 
   return (
     <section className="panel stack-lg rise rise-1 chore-mine">
-      <p className="tag">Yours every day</p>
+      <p className="tag">Yours today</p>
 
       {mine.map((chore) => {
         const given = answerTo(chore.id);
@@ -104,14 +109,14 @@ export function MyChores() {
 
       <p className="tag chore-hint">
         {mine.every((chore) => answerTo(chore.id) !== null)
-          ? 'Tap an answer again to take it back. It clears at midnight either way.'
-          : 'Nobody else answers this one. It clears at midnight.'}
+          ? 'Tap an answer again to take it back.'
+          : 'Nobody else answers this one. Just for today.'}
       </p>
     </section>
   );
 }
 
-/** The whole round at a glance: who said yes, who said no, who has not said. */
+/** Today's round at a glance: who said yes, who said no, who has not said. */
 export function ChoreRound() {
   const { userId, chores, broken, answerTo, house, roster } = useRound();
   if (broken || chores.length === 0) return null;
@@ -126,7 +131,7 @@ export function ChoreRound() {
   return (
     <section className="stack-lg rise rise-4">
       <div className="spread">
-        <p className="tag">The round</p>
+        <p className="tag">Today's round</p>
         <p className="tag figure">
           {answered} of {chores.length} done
         </p>

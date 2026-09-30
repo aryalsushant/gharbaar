@@ -418,12 +418,17 @@ export function useClearBasket() {
   });
 }
 
-// --- the nightly round ------------------------------------------------------
+// --- the round ---------------------------------------------------------------
 
-/** One standing chore, tied to a seat rather than to an account. */
-export type Chore = { id: string; roster_key: string; title: string };
+/**
+ * One job on one day, tied to a seat rather than to an account.
+ *
+ * A round is the rows sharing a `for_date`. There is no daily rota here: on a
+ * day nobody set a round for, this returns nothing and the board says nothing.
+ */
+export type Chore = { id: string; roster_key: string; title: string; for_date: string };
 
-/** One day's answer to one chore. `done` false is a real answer, not a gap. */
+/** One day's answer to one job. `done` false is a real answer, not a gap. */
 export type ChoreCheck = {
   id: string;
   chore_id: string;
@@ -433,16 +438,22 @@ export type ChoreCheck = {
 };
 
 /**
- * The division of the kitchen. It is set in a migration and cannot be edited
- * from the app, so it is worth a long stale time: this is the one query in here
- * that genuinely does not change between releases.
+ * The round for one day, which is usually no round at all.
+ *
+ * The list is set in a migration and cannot be edited from the app, so a long
+ * stale time is safe. Keyed by date, so crossing midnight with the app open
+ * fetches the new day rather than showing yesterday's questions.
  */
-export function useChores() {
+export function useChores(date: string) {
   return useQuery({
-    queryKey: ['chores'],
+    queryKey: ['chores', date],
     queryFn: async () =>
       unwrap(
-        await supabase.from('chores').select('id, roster_key, title').order('created_at')
+        await supabase
+          .from('chores')
+          .select('id, roster_key, title, for_date')
+          .eq('for_date', date)
+          .order('created_at')
       ) as Chore[],
     staleTime: 60 * 60 * 1000,
   });
