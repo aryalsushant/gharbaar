@@ -79,3 +79,8 @@ verify_enabled = true
 # this repo.
 [functions.cook-reminder]
 verify_jwt = false
+
+# Same story as the cook reminder: pg_cron has no JWT to present, and the shared
+# secret in the header is what authorises the call.
+[functions.chore-reminder]
+verify_jwt = false
