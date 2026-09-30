@@ -1,26 +1,31 @@
 /**
- * Reminds each person of their own corner of the kitchen, and nobody of
- * anybody else's.
+ * Reminds each person of their own job in today's round, and nobody of anybody
+ * else's.
  *
- * Six separate messages rather than one to the house. A notification that
- * lists all six jobs is a notice board: everybody reads it once, nobody reads
- * it twice. A notification that says the one sentence you personally agreed to
- * is a reminder, and it is the only kind worth sending every day.
+ * A round is a list the house agreed to do on one particular day, so on most
+ * days this finds nothing and sends nothing. That is the normal case, not a
+ * failure: a reminder that arrives every evening whether or not anything was
+ * agreed is the one people turn off.
+ *
+ * Six separate messages rather than one to the house. A notification that lists
+ * all six jobs is a notice board, and everybody reads a notice board exactly
+ * once. A notification carrying the one sentence you personally agreed to is a
+ * reminder.
  *
  * Two modes.
  *
- * The nightly one is what pg_cron calls. Anyone who has already answered is
- * skipped, including the ones who answered no: they have said their piece for
- * the day and pinging them again would be the app arguing with them. It runs
- * hourly and does nothing on 23 of those calls, for the same reason as the cook
- * reminder: pg_cron runs on UTC and a fixed UTC hour drifts by one across
- * daylight saving, so the check for the house's local hour belongs here rather
- * than in a cron expression that is wrong for half the year.
+ * The evening one is what pg_cron calls. Anyone who has already answered is
+ * skipped, including the ones who answered no: they have said their piece and
+ * pinging them again would be the app arguing with them. It runs hourly and does
+ * nothing on 23 of those calls, for the same reason as the cook reminder:
+ * pg_cron runs on UTC and a fixed UTC hour drifts by one across daylight
+ * saving, so the check for the house's local hour belongs here rather than in a
+ * cron expression that is wrong for half the year.
  *
- * The announcement, `?announce=1`, is the once-only one. It goes to all six
- * whatever the hour and whatever they have answered, because its job is to tell
- * people the feature exists and which sentence is theirs. Called by hand after
- * a deploy, never by cron.
+ * The announcement, `?announce=1`, is the once-only one. It goes to everybody in
+ * the round whatever the hour and whatever they have answered, because its job
+ * is to tell people a round exists and which sentence is theirs. Called by hand,
+ * never by cron.
  *
  * Deployed with:  npx supabase functions deploy chore-reminder
  * Needs secrets:  VAPID_PRIVATE_KEY, VAPID_PUBLIC_KEY, CRON_SECRET
@@ -69,7 +74,7 @@ Deno.serve(async (request) => {
   const today = todayIn(HOUSE_TZ);
 
   const [chores, checks, people] = await Promise.all([
-    supabase.from('chores').select('id, roster_key, title'),
+    supabase.from('chores').select('id, roster_key, title').eq('for_date', today),
     supabase.from('chore_checks').select('chore_id').eq('date', today),
     // Seats nobody has claimed have no account to notify, which this drops.
     supabase.from('profiles').select('id, roster_key').not('roster_key', 'is', null),
@@ -91,7 +96,9 @@ Deno.serve(async (request) => {
     );
   }
 
-  if (!chores.data || chores.data.length === 0) return Response.json({ skipped: 'no chores yet' });
+  if (!chores.data || chores.data.length === 0) {
+    return Response.json({ skipped: 'no round today', date: today });
+  }
 
   const answered = new Set((checks.data ?? []).map((c) => c.chore_id));
   const seatOwner = new Map((people.data ?? []).map((p) => [p.roster_key as string, p.id as string]));

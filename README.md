@@ -8,10 +8,10 @@
   cleans up, and somebody else confirms it was done. A missed night is left
   unconfirmed and nothing else happens: six friends do not need a penalty
   system, and no rule inside an app can decide whether dinner happened.
-- **A corner each.** Alongside the rota, every seat owns one standing job in
-  the kitchen, the same one every day. It sits at the top of the board for
-  whoever owns it, it is answered yes or no by that person and nobody else,
-  and it clears itself at midnight.
+- **A round** is a list of jobs the house agreed to do on one particular day,
+  one each. Yours sits at the top of the board that day, answered yes or no by
+  you and nobody else, and everybody can see where the round stands. It is not
+  a rota: on a day nobody set a round for, the board does not mention it.
 - **Birthdays** announce themselves the day before.
 
 It runs in a browser and installs to a phone home screen as a PWA.
@@ -143,8 +143,8 @@ There is no test suite and no CI, by design. This is the checklist.
 - [ ] Swap a day. The two people trade, and clearing it puts both back.
 - [ ] Add a weekly job for one flat. Only that flat's people take turns, the
       holder changes on the start date's weekday, and somebody else signs it off.
-- [ ] Answer your own corner, then change the answer, then take it back. The
-      round on the board moves for everybody, and the database refuses an
-      answer to somebody else's corner rather than the button merely being
-      absent.
+- [ ] On a day with a round, answer your own job, change the answer, then take
+      it back. The round moves for everybody, and the database refuses an answer
+      to somebody else's job rather than the button merely being absent. On a day
+      with no round, the board does not mention one.
 - [ ] Install to a home screen and receive a notification there.
