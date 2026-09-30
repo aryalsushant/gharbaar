@@ -1560,6 +1560,91 @@ h2 {
   border-bottom-color: var(--coral);
 }
 
+/* ---------------------------------------------------------------------------
+   The nightly round
+   Your own corner sits above everything else on the board, so it is the one
+   panel that is allowed to borrow the accent for its border. Everybody else's
+   is a list, because five jobs that are not yours are a glance and not a task.
+   --------------------------------------------------------------------------- */
+
+.chore-mine {
+  border-color: rgba(99, 230, 200, 0.28);
+}
+
+.chore-block + .chore-block {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--hairline);
+}
+
+.chore-title {
+  font-family: var(--display);
+  font-size: clamp(1.05rem, 4.4vw, 1.3rem);
+  font-weight: 600;
+  line-height: 1.32;
+  margin: 8px 0 0;
+}
+
+.chore-answer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* Saying no is not an error, so it is not coral until it is actually chosen.
+   An always-red button reads as a warning and gets avoided, which is the one
+   thing that would make the round dishonest. */
+.chore-no.is-on {
+  color: var(--coral);
+  border-color: rgba(255, 138, 107, 0.5);
+  background: rgba(255, 138, 107, 0.1);
+}
+
+.chore-hint {
+  margin-top: 18px;
+  letter-spacing: 0.08em;
+  line-height: 1.5;
+}
+
+/* The chore itself is the second line, quieter than the name. Six full
+   sentences at full contrast is a wall; the name is what you scan for. */
+.chore-round li {
+  align-items: center;
+}
+
+.chore-line {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.chore-what {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+
+.flag-miss {
+  color: var(--coral);
+  border-color: rgba(255, 138, 107, 0.38);
+  background: rgba(255, 138, 107, 0.08);
+}
+
+/* Nothing said yet. Deliberately the dimmest of the three: it is a gap, not a
+   verdict, and it fills itself in every evening. */
+.flag-open {
+  color: var(--ink-faint);
+  border-color: var(--hairline);
+}
+
+/* A whole sentence in a flag would wrap to three lines on a narrow phone. */
+.chore-round .flag {
+  flex: none;
+  white-space: nowrap;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .headline-day {
     border-radius: var(--bend);
