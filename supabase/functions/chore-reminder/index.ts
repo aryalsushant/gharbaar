@@ -7,14 +7,20 @@
  * it twice. A notification that says the one sentence you personally agreed to
  * is a reminder, and it is the only kind worth sending every day.
  *
- * Anyone who has already answered is skipped, including the ones who answered
- * no. They have said their piece for the day and pinging them again would be
- * the app arguing with them.
+ * Two modes.
  *
- * Hourly from pg_cron, doing nothing on 23 of the calls, for the same reason as
- * the cook reminder: pg_cron runs on UTC and a fixed UTC hour drifts by one
- * across daylight saving, so the check for the house's local hour belongs here
- * rather than in a cron expression that is wrong for half the year.
+ * The nightly one is what pg_cron calls. Anyone who has already answered is
+ * skipped, including the ones who answered no: they have said their piece for
+ * the day and pinging them again would be the app arguing with them. It runs
+ * hourly and does nothing on 23 of those calls, for the same reason as the cook
+ * reminder: pg_cron runs on UTC and a fixed UTC hour drifts by one across
+ * daylight saving, so the check for the house's local hour belongs here rather
+ * than in a cron expression that is wrong for half the year.
+ *
+ * The announcement, `?announce=1`, is the once-only one. It goes to all six
+ * whatever the hour and whatever they have answered, because its job is to tell
+ * people the feature exists and which sentence is theirs. Called by hand after
+ * a deploy, never by cron.
  *
  * Deployed with:  npx supabase functions deploy chore-reminder
  * Needs secrets:  VAPID_PRIVATE_KEY, VAPID_PUBLIC_KEY, CRON_SECRET
@@ -44,15 +50,18 @@ function hourIn(timeZone: string): number {
 }
 
 Deno.serve(async (request) => {
-  // pg_cron is the only caller. Without this the function is a public endpoint
-  // that will happily notify the house on demand.
+  // pg_cron is the only caller of the nightly mode, and the announcement is
+  // called by hand with the same secret. Without this the function is a public
+  // endpoint that will happily notify the house on demand.
   if (!authorised(request)) return new Response('no', { status: 401 });
 
   const url = new URL(request.url);
+  const announce = url.searchParams.get('announce') === '1';
   const forced = url.searchParams.get('force') === '1';
   const only = url.searchParams.get('only');
 
-  if (!forced && hourIn(HOUSE_TZ) !== SEND_AT_HOUR) {
+  // An announcement is deliberate, so it does not wait for eight o'clock.
+  if (!announce && !forced && hourIn(HOUSE_TZ) !== SEND_AT_HOUR) {
     return Response.json({ skipped: 'wrong hour', hour: hourIn(HOUSE_TZ) });
   }
 
@@ -62,7 +71,7 @@ Deno.serve(async (request) => {
   const [{ data: chores }, { data: checks }, { data: people }] = await Promise.all([
     supabase.from('chores').select('id, roster_key, title'),
     supabase.from('chore_checks').select('chore_id').eq('date', today),
-    // Seats nobody has claimed have no account to notify, which the join drops.
+    // Seats nobody has claimed have no account to notify, which this drops.
     supabase.from('profiles').select('id, roster_key').not('roster_key', 'is', null),
   ]);
 
@@ -73,29 +82,44 @@ Deno.serve(async (request) => {
 
   let sent = 0;
   let pruned = 0;
-  const reminded: string[] = [];
+  const reached: string[] = [];
+
+  // Who the message was for and did not get. An announcement that quietly
+  // reaches four of six looks identical to one that reached everybody, and the
+  // two people who never heard about their job are exactly the ones who need
+  // telling another way.
+  const missed: string[] = [];
 
   for (const chore of chores) {
-    if (answered.has(chore.id)) continue;
+    if (!announce && answered.has(chore.id)) continue;
 
-    const owner = seatOwner.get(chore.roster_key);
-    if (!owner) continue;
-    // A single seat, for testing this without waking the other five.
+    // A single seat, for trying this without waking the other five.
     if (only && only !== chore.roster_key) continue;
 
+    const owner = seatOwner.get(chore.roster_key);
+    if (!owner) {
+      missed.push(`${chore.roster_key} (seat not claimed)`);
+      continue;
+    }
+
     const result = await pushTo(supabase, [owner], {
-      title: 'Your bit of the house',
-      body: chore.title,
+      title: announce ? 'This is your task' : 'Your bit of the house',
+      body: announce ? `${chore.title}. Tick it off in Gharbaar.` : chore.title,
       url: '/today',
-      // One tag per person per day, so a second run replaces the first
-      // notification rather than stacking another one behind it.
-      tag: `chore-${chore.roster_key}-${today}`,
+      // One tag per person, so a second run replaces the first notification
+      // rather than stacking another one behind it. The announcement keeps its
+      // own tag so it never replaces a nightly reminder or the other way round.
+      tag: announce ? `chore-intro-${chore.roster_key}` : `chore-${chore.roster_key}-${today}`,
     });
 
     sent += result.sent;
     pruned += result.pruned;
-    if (result.sent > 0) reminded.push(chore.roster_key);
+
+    if (result.sent > 0) reached.push(chore.roster_key);
+    // No subscription on any device: notifications never turned on, or turned
+    // on in a browser tab on an iPhone, where they cannot arrive.
+    else missed.push(`${chore.roster_key} (no device subscribed)`);
   }
 
-  return Response.json({ date: today, sent, pruned, reminded });
+  return Response.json({ mode: announce ? 'announcement' : 'nightly', date: today, sent, pruned, reached, missed });
 });
