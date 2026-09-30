@@ -68,17 +68,33 @@ Deno.serve(async (request) => {
   const supabase = serviceClient();
   const today = todayIn(HOUSE_TZ);
 
-  const [{ data: chores }, { data: checks }, { data: people }] = await Promise.all([
+  const [chores, checks, people] = await Promise.all([
     supabase.from('chores').select('id, roster_key, title'),
     supabase.from('chore_checks').select('chore_id').eq('date', today),
     // Seats nobody has claimed have no account to notify, which this drops.
     supabase.from('profiles').select('id, roster_key').not('roster_key', 'is', null),
   ]);
 
-  if (!chores || chores.length === 0) return Response.json({ skipped: 'no chores yet' });
+  // A read that failed used to look exactly like a read that came back empty,
+  // which turned "the query broke" into the far more alarming and completely
+  // wrong "nobody has claimed their seat". Say which one broke instead.
+  const broke = [
+    ['chores', chores.error],
+    ['chore_checks', checks.error],
+    ['profiles', people.error],
+  ].filter(([, error]) => error);
 
-  const answered = new Set((checks ?? []).map((c) => c.chore_id));
-  const seatOwner = new Map((people ?? []).map((p) => [p.roster_key as string, p.id as string]));
+  if (broke.length > 0) {
+    return Response.json(
+      { failed: broke.map(([table, error]) => `${table}: ${(error as { message: string }).message}`) },
+      { status: 500 }
+    );
+  }
+
+  if (!chores.data || chores.data.length === 0) return Response.json({ skipped: 'no chores yet' });
+
+  const answered = new Set((checks.data ?? []).map((c) => c.chore_id));
+  const seatOwner = new Map((people.data ?? []).map((p) => [p.roster_key as string, p.id as string]));
 
   let sent = 0;
   let pruned = 0;
@@ -90,7 +106,7 @@ Deno.serve(async (request) => {
   // telling another way.
   const missed: string[] = [];
 
-  for (const chore of chores) {
+  for (const chore of chores.data) {
     if (!announce && answered.has(chore.id)) continue;
 
     // A single seat, for trying this without waking the other five.
