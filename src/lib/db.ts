@@ -418,6 +418,91 @@ export function useClearBasket() {
   });
 }
 
+// --- the nightly round ------------------------------------------------------
+
+/** One standing chore, tied to a seat rather than to an account. */
+export type Chore = { id: string; roster_key: string; title: string };
+
+/** One day's answer to one chore. `done` false is a real answer, not a gap. */
+export type ChoreCheck = {
+  id: string;
+  chore_id: string;
+  date: string;
+  user_id: string;
+  done: boolean;
+};
+
+/**
+ * The division of the kitchen. It is set in a migration and cannot be edited
+ * from the app, so it is worth a long stale time: this is the one query in here
+ * that genuinely does not change between releases.
+ */
+export function useChores() {
+  return useQuery({
+    queryKey: ['chores'],
+    queryFn: async () =>
+      unwrap(
+        await supabase.from('chores').select('id, roster_key, title').order('created_at')
+      ) as Chore[],
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
+export function useChoreChecks(date: string) {
+  return useQuery({
+    queryKey: ['chore-checks', date],
+    queryFn: async () =>
+      unwrap(
+        await supabase
+          .from('chore_checks')
+          .select('id, chore_id, date, user_id, done')
+          .eq('date', date)
+      ) as ChoreCheck[],
+  });
+}
+
+/**
+ * Answer your own chore for a day, or take the answer back.
+ *
+ * Three states, not two: yes, no, and nothing said yet. Tapping the answer you
+ * already gave clears it, which is the only way out of a mistap, and an unsaid
+ * answer has to stay distinguishable from a no so the evening reminder knows
+ * who it is actually for.
+ *
+ * Upsert rather than insert, because the unique index on (chore, date) is what
+ * makes changing your mind a change rather than a second row.
+ */
+export function useMarkChore(date: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      choreId,
+      userId,
+      done,
+    }: {
+      choreId: string;
+      userId: string;
+      done: boolean | null;
+    }) => {
+      if (done === null) {
+        const { error } = await supabase
+          .from('chore_checks')
+          .delete()
+          .eq('chore_id', choreId)
+          .eq('date', date);
+        if (error) throw new Error(error.message);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('chore_checks')
+        .upsert({ chore_id: choreId, date, user_id: userId, done }, { onConflict: 'chore_id,date' });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['chore-checks'] }),
+  });
+}
+
 // --- settling up ------------------------------------------------------------
 
 export type Settlement = {
