@@ -10,6 +10,7 @@ import { List } from './screens/List';
 import { Money } from './screens/Money';
 import { People } from './screens/People';
 import { Person } from './screens/Person';
+import { Stats } from './screens/Stats';
 import { Today } from './screens/Today';
 
 /**
@@ -46,6 +47,7 @@ export default function App() {
             <Route path="/money/:id/edit" element={<AddExpense />} />
             <Route path="/house" element={<People />} />
             <Route path="/house/:id" element={<Person />} />
+            <Route path="/stats" element={<Stats />} />
             <Route path="*" element={<Navigate to="/today" replace />} />
           </Routes>
         )}
