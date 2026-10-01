@@ -5,9 +5,13 @@
 - **Groceries and bills** get logged once and split six ways in integer cents, so
   the shares always add back up to what was actually spent.
 - **Cooking and cleaning** rotate a day at a time. Whoever cooks that night also
-  cleans up, and somebody else confirms it was done. A missed night is left
-  unconfirmed and nothing else happens: six friends do not need a penalty
-  system, and no rule inside an app can decide whether dinner happened.
+  cleans up, and at half nine everybody else is asked to rate the night, one to
+  five stars for the cooking and one to five for the cleaning. The first rating
+  also signs the night off. A missed night is left unrated and nothing else
+  happens: six friends do not need a penalty system, and no rule inside an app
+  can decide whether dinner happened.
+- **Stats** shows each cook's average stars and how many ratings they have had.
+  Who gave which stars is never shown, to anybody.
 - **A round** is a list of jobs the house agreed to do on one particular day,
   one each. Yours sits at the top of the board that day, answered yes or no by
   you and nobody else, and everybody can see where the round stands. It is not
@@ -135,8 +139,12 @@ There is no test suite and no CI, by design. This is the checklist.
 - [ ] Try to claim a name somebody already holds. It is refused rather than
       silently reassigned.
 - [ ] Log an expense. Every housemate sees it and the balances move.
-- [ ] Confirm somebody else's duty. Try to confirm your own, and watch the
-      database refuse it rather than the button merely being hidden.
+- [ ] After half nine, rate somebody else's night, then change your stars. The
+      night shows as signed off and Stats moves. Try to rate your own night,
+      and watch the database refuse it rather than the stars merely being
+      hidden.
+- [ ] The next day, last night's card is still there for anybody who did not
+      rate it, and gone for anybody who did.
 - [ ] Ask for cover on a night, and have somebody else take it. The two days
       trade and nobody else moves.
 - [ ] Settle up with someone. Only the person being paid can record it.
@@ -148,3 +156,5 @@ There is no test suite and no CI, by design. This is the checklist.
       to somebody else's job rather than the button merely being absent. On a day
       with no round, the board does not mention one.
 - [ ] Install to a home screen and receive a notification there.
+- [ ] At half nine, everybody but the cook gets asked to rate tonight's
+      dinner.
