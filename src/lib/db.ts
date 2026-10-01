@@ -824,6 +824,101 @@ export function useConfirmCompletion(respId: string | undefined) {
   });
 }
 
+// --- dinner ratings ---------------------------------------------------------
+
+/** One person's stars for one night. Only ever your own: the policy hides the rest. */
+export type DinnerRating = {
+  id: string;
+  date: string;
+  user_id: string;
+  cooking: number;
+  cleaning: number;
+};
+
+/** What the house sees instead of the rows: a count and two averages per cook. */
+export type RatingStat = {
+  user_id: string;
+  ratings: number;
+  cooking: number;
+  cleaning: number;
+};
+
+export function useMyRatings(respId: string | undefined, userId: string | null) {
+  return useQuery({
+    queryKey: ['ratings', respId, userId],
+    queryFn: async () =>
+      unwrap(
+        await supabase
+          .from('dinner_ratings')
+          .select('id, date, user_id, cooking, cleaning')
+          .eq('responsibility_id', respId!)
+          .eq('rated_by', userId!)
+      ) as DinnerRating[],
+    enabled: !!respId && !!userId,
+  });
+}
+
+/**
+ * Rate a night, or change the rating you gave it.
+ *
+ * Upsert on (night, rater), so rating again is a change rather than a second
+ * vote. The first rating for a night also signs it off, in a trigger, which is
+ * why the completions are re-read here too.
+ */
+export function useRateDinner(respId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      date,
+      assignee,
+      ratedBy,
+      cooking,
+      cleaning,
+    }: {
+      date: string;
+      assignee: string;
+      ratedBy: string;
+      cooking: number;
+      cleaning: number;
+    }) => {
+      const { error } = await supabase.from('dinner_ratings').upsert(
+        {
+          responsibility_id: respId,
+          date,
+          user_id: assignee,
+          rated_by: ratedBy,
+          cooking,
+          cleaning,
+        },
+        { onConflict: 'responsibility_id,date,rated_by' }
+      );
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ratings', respId] });
+      qc.invalidateQueries({ queryKey: ['rating-stats'] });
+      qc.invalidateQueries({ queryKey: ['completions'] });
+    },
+  });
+}
+
+export function useRatingStats() {
+  return useQuery({
+    queryKey: ['rating-stats'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('dinner_rating_stats');
+      if (error) throw new Error(error.message);
+      // Postgres numeric can arrive as a string, so pin every figure to a number.
+      return (data as RatingStat[]).map((row) => ({
+        user_id: row.user_id,
+        ratings: Number(row.ratings),
+        cooking: Number(row.cooking),
+        cleaning: Number(row.cleaning),
+      }));
+    },
+  });
+}
+
 /** A swap is an override row for one date; upsert so re-swapping works. */
 export function useSetOverride(respId: string | undefined) {
   const qc = useQueryClient();

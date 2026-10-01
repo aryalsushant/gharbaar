@@ -5,7 +5,7 @@ import { useAuth } from '../lib/auth';
 import { useProfile } from '../lib/db';
 
 /**
- * Tonight, the list, the money, the people, and you.
+ * Tonight, the list, the money, the people, the stars, and you.
  *
  * Your own face sits apart from the tabs on purpose. The tabs are places in the
  * house; your face is who you are while standing in them, and it belongs in the
@@ -31,6 +31,9 @@ export function Nav() {
         </NavLink>
         <NavLink to="/house" className={tab}>
           House
+        </NavLink>
+        <NavLink to="/stats" className={tab}>
+          Stats
         </NavLink>
       </nav>
 

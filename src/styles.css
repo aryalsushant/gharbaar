@@ -1001,7 +1001,7 @@ h2 {
 }
 
 /* Narrow phones. The tabs give up their padding before the face gives up its
-   place, and all four labels stay readable: a tab you have to scroll to find is
+   place, and all five labels stay readable: a tab you have to scroll to find is
    a tab most people never press. */
 @media (max-width: 430px) {
   .stage {
@@ -1019,8 +1019,8 @@ h2 {
   }
 
   .nav-link {
-    padding: 8px 11px;
-    font-size: 0.82rem;
+    padding: 8px 9px;
+    font-size: 0.8rem;
   }
 
   .me .avatar {
@@ -1031,8 +1031,8 @@ h2 {
 
 @media (max-width: 350px) {
   .nav-link {
-    padding: 7px 9px;
-    font-size: 0.78rem;
+    padding: 7px 6px;
+    font-size: 0.74rem;
   }
 
   .me .avatar {
@@ -1643,6 +1643,139 @@ h2 {
 .chore-round .flag {
   flex: none;
   white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+   Rating dinner
+   Amber rather than the accent. Aqua already means "done" all over the board,
+   and a three star night is not a tick, it is an opinion.
+   --------------------------------------------------------------------------- */
+
+.rate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.rate-label {
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+}
+
+.stars {
+  display: inline-flex;
+  gap: 2px;
+}
+
+/* Big enough to hit with a thumb on a phone held in one hand. */
+.star {
+  display: inline-flex;
+  padding: 5px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-faint);
+  opacity: 0.55;
+  transition:
+    color 0.3s var(--ease-liquid),
+    opacity 0.3s var(--ease-liquid),
+    transform 0.3s var(--ease-liquid);
+}
+
+.star svg {
+  width: 26px;
+  height: 26px;
+}
+
+.star.is-on {
+  color: var(--amber);
+  opacity: 1;
+}
+
+.star:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.star:disabled {
+  cursor: default;
+}
+
+.rate-hint {
+  margin-top: 16px;
+  letter-spacing: 0.08em;
+}
+
+/* The stats table. Name, two averages and a count on one line, with fixed
+   number columns so the figures line up down the page. */
+.rating-table-head,
+.rating-table li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4.2rem 4.2rem 3.4rem;
+  align-items: center;
+  gap: 8px;
+}
+
+.rating-table-head {
+  padding-bottom: 2px;
+}
+
+/* The usual tag tracking is too wide for a column header, and the headers ran
+   into each other on a phone. */
+.rating-table-head .tag {
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* Three tiles, always on one row. The ledger's auto-fit wraps the third onto
+   a line of its own on a phone, which reads as a footnote. */
+.stat-row-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.stat-row-three .tag {
+  letter-spacing: 0.12em;
+}
+
+.rating-table-head .tag:not(:first-child),
+.rating-count {
+  text-align: right;
+}
+
+.rating-table .faced {
+  min-width: 0;
+}
+
+.rating-score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.rating-score svg {
+  width: 13px;
+  height: 13px;
+  color: var(--amber);
+}
+
+.rating-score.is-none {
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+}
+
+@media (max-width: 430px) {
+  .rating-table-head,
+  .rating-table li {
+    grid-template-columns: minmax(0, 1fr) 3.4rem 3.4rem 3rem;
+    gap: 6px;
+  }
+
+  .rating-table-head .tag {
+    font-size: 0.54rem;
+    letter-spacing: 0.02em;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

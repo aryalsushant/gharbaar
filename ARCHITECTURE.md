@@ -43,7 +43,8 @@ profile row and nothing else, so every other screen would render empty.
 has `responsibility_members` (rotation order), `responsibility_overrides` (swaps),
 `responsibility_completions` (confirmations) and `swap_requests` (asking for
 cover). `settlements` records money actually handed over.
-`push_subscriptions` holds one row per browser that granted permission.
+`dinner_ratings` holds one row per rater per night, with stars for cooking and
+cleaning. `push_subscriptions` holds one row per browser that granted permission.
 
 ## Rotation algorithm
 
@@ -81,6 +82,19 @@ Two rules are enforced in policies rather than in the UI, so calling the API dir
 does not get around them: a completion's `marked_by` may not equal the assignee, and a
 settlement can only be recorded by the person who received the money.
 
+## Ratings
+
+The sign-off question became a rating: everybody but the cook gives the night one to
+five stars for cooking and for cleaning. A trigger on `dinner_ratings` writes the
+night's completion on the first rating, so the fairness count, the week strip and the
+cook reminder still read `responsibility_completions` and did not change. The same
+rule as a sign-off holds in the policy: `rated_by` may not equal the cook.
+
+Ratings are anonymous. The table policy lets each person read only the rows they gave,
+and Stats reads `dinner_rating_stats()`, a `SECURITY DEFINER` function that returns
+counts and averages per cook and nothing else. A score you have to sign is a polite
+four, and then every number means nothing.
+
 ## Money
 
 All split math is in integer cents (`src/lib/balances.ts`). Floating point splits do
@@ -93,9 +107,14 @@ rather than by policy.
 
 ## Notifications
 
-Web push, through `src/sw.ts` and a VAPID key pair. On iOS a notification only ever
-arrives for a PWA opened from the home screen; a Safari tab cannot receive one. Four
-of the six are on iPhones, so the install step is part of the product.
+Web push, through `src/sw.ts` and a VAPID key pair. Three Edge Functions run on
+pg_cron, each called hourly and each checking the house's local hour itself so daylight
+saving cannot move it: `cook-reminder` at 5pm, `chore-reminder` at 8pm, and
+`rate-reminder` at 9:30pm, which asks everybody but the cook to rate the night.
+
+On iOS a notification only ever arrives for a PWA opened from the home screen; a
+Safari tab cannot receive one. Four of the six are on iPhones, so the install step is
+part of the product.
 
 ## Secrets
 
