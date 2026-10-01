@@ -84,3 +84,8 @@ verify_jwt = false
 # secret in the header is what authorises the call.
 [functions.chore-reminder]
 verify_jwt = false
+
+# Called by pg_cron at half past every hour, with the same shared secret as
+# the other two reminders and no JWT.
+[functions.rate-reminder]
+verify_jwt = false
