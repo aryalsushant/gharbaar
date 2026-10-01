@@ -1645,6 +1645,68 @@ h2 {
   white-space: nowrap;
 }
 
+/* ---------------------------------------------------------------------------
+   Rating dinner
+   Amber rather than the accent. Aqua already means "done" all over the board,
+   and a three star night is not a tick, it is an opinion.
+   --------------------------------------------------------------------------- */
+
+.rate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.rate-label {
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+}
+
+.stars {
+  display: inline-flex;
+  gap: 2px;
+}
+
+/* Big enough to hit with a thumb on a phone held in one hand. */
+.star {
+  display: inline-flex;
+  padding: 5px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-faint);
+  opacity: 0.55;
+  transition:
+    color 0.3s var(--ease-liquid),
+    opacity 0.3s var(--ease-liquid),
+    transform 0.3s var(--ease-liquid);
+}
+
+.star svg {
+  width: 26px;
+  height: 26px;
+}
+
+.star.is-on {
+  color: var(--amber);
+  opacity: 1;
+}
+
+.star:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.star:disabled {
+  cursor: default;
+}
+
+.rate-hint {
+  margin-top: 16px;
+  letter-spacing: 0.08em;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .headline-day {
     border-radius: var(--bend);

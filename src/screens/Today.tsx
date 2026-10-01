@@ -6,6 +6,7 @@ import { ChoreRound, MyChores } from '../components/Chores';
 import { DayStrip } from '../components/DayStrip';
 import { Nav } from '../components/Nav';
 import { PushSetup } from '../components/PushSetup';
+import { RateDinner } from '../components/RateDinner';
 import { useAuth } from '../lib/auth';
 import {
   DINNER,
@@ -15,10 +16,11 @@ import {
   useApplySwap,
   useCloseSwapRequest,
   useCompletions,
-  useConfirmCompletion,
   useCreateResponsibility,
   useHousehold,
+  useMyRatings,
   useOverrides,
+  useRateDinner,
   useRequestSwap,
   useResponsibilities,
   useRoster,
@@ -47,10 +49,11 @@ export function Today() {
   const overrides = useOverrides(duty?.id);
   const completions = useCompletions(duty?.id);
   const requests = useSwapRequests(duty?.id);
+  const myRatings = useMyRatings(duty?.id, userId);
 
   const createDuty = useCreateResponsibility();
   const syncMembers = useSyncRotationMembers(duty?.id);
-  const confirm = useConfirmCompletion(duty?.id);
+  const rate = useRateDinner(duty?.id);
   const applySwap = useApplySwap(duty?.id);
   const requestSwap = useRequestSwap(duty?.id);
   const closeRequest = useCloseSwapRequest(duty?.id);
@@ -60,7 +63,7 @@ export function Today() {
   const todayKey = toDateKey(new Date());
 
   /**
-   * The sign-off question only appears at 10:30pm.
+   * The stars only appear at 9:30pm, when the reminder to rate goes out.
    *
    * Asking at six in the evening invites an answer nobody can give yet, and a
    * question sitting there all day is one people learn to tap without reading.
@@ -72,7 +75,7 @@ export function Today() {
     const tick = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(tick);
   }, []);
-  const signOffOpen = now.getHours() * 60 + now.getMinutes() >= 22 * 60 + 30;
+  const signOffOpen = now.getHours() * 60 + now.getMinutes() >= 21 * 60 + 30;
 
   const personOf = (id: string | null) => (id ? house.data?.find((p) => p.id === id) : undefined);
   const nameOf = (id: string | null) => personOf(id)?.display_name ?? (id ? 'Someone' : 'Nobody');
@@ -151,11 +154,16 @@ export function Today() {
   const tonight = days[0];
   const completionFor = (date: string) => completions.data?.find((c) => c.date === date);
   const requestFor = (date: string) => requests.data?.find((r) => r.date === date);
+  const myRatingFor = (date: string) => myRatings.data?.find((r) => r.date === date);
+
+  function rateNight(date: string, assignee: string, stars: { cooking: number; cleaning: number }) {
+    run(() => rate.mutateAsync({ date, assignee, ratedBy: userId!, ...stars }));
+  }
 
   /**
-   * Last night can still be signed off.
+   * Last night can still be rated.
    *
-   * Nobody is awake at half ten every night, and a dinner that was cooked but
+   * Nobody is awake at half nine every night, and a dinner that was cooked but
    * not confirmed used to vanish at midnight, with no way to say so afterwards.
    * That then read as the cook being a night behind, which is the counter
    * accusing somebody of the app's own gap.
@@ -321,14 +329,14 @@ export function Today() {
 
       {!startsLater && (iAmCooking || signOffOpen || tonightDone) && (
       <section className="panel stack-lg rise rise-2">
-        {tonightDone ? (
+        {iAmCooking && tonightDone ? (
           <p className="notice notice-good" style={{ marginBottom: 0 }}>
             Signed off by {nameOf(tonightDone.marked_by)}.
           </p>
         ) : iAmCooking ? (
           <>
             <p className="lede" style={{ maxWidth: 'none', marginTop: 0 }}>
-              Your night. One of the others signs it off, so there is no button here for you.
+              Your night. The others rate it, so there are no stars here for you.
             </p>
             {tonight && requestFor(tonight.date) ? (
               <p className="notice notice-bad" style={{ margin: '14px 0 0' }}>
@@ -353,49 +361,35 @@ export function Today() {
               </button>
             )}
           </>
-        ) : !signOffOpen ? null : (
-          <>
-            <p className="tag">Did {nameOf(tonight?.assignee ?? null)} cook and clean?</p>
-            <button
-              className="btn"
-              style={{ marginTop: 12 }}
-              disabled={confirm.isPending}
-              onClick={() =>
-                run(() =>
-                  confirm.mutateAsync({
-                    date: tonight!.date,
-                    assignee: tonight!.assignee!,
-                    markedBy: userId!,
-                  })
-                )
-              }
-            >
-              Yes, done
-            </button>
-          </>
-        )}
+        ) : !signOffOpen ? (
+          // Signed off before the stars open, which only an older version of
+          // the app could do. Say so rather than show an empty panel.
+          <p className="notice notice-good" style={{ marginBottom: 0 }}>
+            Signed off by {nameOf(tonightDone!.marked_by)}.
+          </p>
+        ) : tonight?.assignee ? (
+          <RateDinner
+            key={`${tonight.date}-${myRatingFor(tonight.date)?.cooking}-${myRatingFor(tonight.date)?.cleaning}`}
+            question={`Rate ${nameOf(tonight.assignee)}'s cooking and cleaning`}
+            given={myRatingFor(tonight.date)}
+            pending={rate.isPending}
+            onRate={(stars) => rateNight(tonight.date, tonight.assignee!, stars)}
+          />
+        ) : null}
       </section>
       )}
 
-      {lastNight && !completionFor(lastNight.date) && lastNight.assignee !== userId && (
+      {/* Waits for your own ratings to load, so a night you already rated does
+          not flash up and vanish again. */}
+      {lastNight && myRatings.data && !myRatingFor(lastNight.date) && lastNight.assignee !== userId && (
         <section className="panel stack-lg rise rise-2">
-          <p className="tag">Did {nameOf(lastNight.assignee)} cook and clean last night?</p>
-          <button
-            className="btn btn-small"
-            style={{ marginTop: 12 }}
-            disabled={confirm.isPending}
-            onClick={() =>
-              run(() =>
-                confirm.mutateAsync({
-                  date: lastNight.date,
-                  assignee: lastNight.assignee,
-                  markedBy: userId!,
-                })
-              )
-            }
-          >
-            Yes, done
-          </button>
+          <RateDinner
+            key={lastNight.date}
+            question={`Rate ${nameOf(lastNight.assignee)}'s cooking and cleaning last night`}
+            given={undefined}
+            pending={rate.isPending}
+            onRate={(stars) => rateNight(lastNight.date, lastNight.assignee, stars)}
+          />
         </section>
       )}
 
