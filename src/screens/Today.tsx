@@ -283,7 +283,7 @@ export function Today() {
         <ChoreRound />
 
         <p className="lede rise rise-3" style={{ maxWidth: 'none', marginTop: 20 }}>
-          The ledger works now. Log groceries, split them, settle up. So do the other{' '}
+          The list works now, and so do the other{' '}
           <Link className="link" to="/jobs">jobs</Link>. Only the cooking rota is waiting.
         </p>
       </div>
