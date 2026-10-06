@@ -3,7 +3,7 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { Avatar } from '../components/Avatar';
 import { Nav } from '../components/Nav';
 import { useAuth } from '../lib/auth';
-import { APARTMENTS } from '../lib/categories';
+import { APARTMENTS } from '../lib/apartments';
 import { shortDate } from '../lib/dates';
 import {
   DINNER,

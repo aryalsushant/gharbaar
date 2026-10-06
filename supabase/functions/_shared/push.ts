@@ -95,8 +95,6 @@ export async function household(supabase: SupabaseClient) {
   return data ?? [];
 }
 
-export const money = (amount: number | string) => `$${Number(amount).toFixed(2)}`;
-
 /**
  * Wednesday 19th August, rather than 2026-08-19.
  *

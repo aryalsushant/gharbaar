@@ -3,11 +3,9 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { Water } from './components/Water';
 import { useAuth } from './lib/auth';
 import { useProfile } from './lib/db';
-import { AddExpense } from './screens/AddExpense';
 import { Enter } from './screens/Enter';
 import { Jobs } from './screens/Jobs';
 import { List } from './screens/List';
-import { Money } from './screens/Money';
 import { People } from './screens/People';
 import { Person } from './screens/Person';
 import { Stats } from './screens/Stats';
@@ -42,9 +40,6 @@ export default function App() {
             <Route path="/today" element={<Today />} />
             <Route path="/list" element={<List />} />
             <Route path="/jobs" element={<Jobs />} />
-            <Route path="/money" element={<Money />} />
-            <Route path="/money/add" element={<AddExpense />} />
-            <Route path="/money/:id/edit" element={<AddExpense />} />
             <Route path="/house" element={<People />} />
             <Route path="/house/:id" element={<Person />} />
             <Route path="/stats" element={<Stats />} />

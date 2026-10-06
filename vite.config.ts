@@ -19,7 +19,7 @@ export default defineConfig({
       manifest: {
         name: 'Gharbaar',
         short_name: 'Gharbaar',
-        description: 'Who paid, who cooks, who owes.',
+        description: 'Who cooks, who cleans, what we need.',
         start_url: '/',
         display: 'standalone',
         background_color: '#04101a',

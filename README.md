@@ -1,9 +1,9 @@
 # Gharbaar
 
-घरबार, household. Six people, one kitchen, one ledger.
+घरबार, household. Six people, one kitchen, one list.
 
-- **Groceries and bills** get logged once and split six ways in integer cents, so
-  the shares always add back up to what was actually spent.
+- **The list** is what the house is out of. Anybody adds, anybody ticks things
+  off in the shop.
 - **Cooking and cleaning** rotate a day at a time. Whoever cooks that night also
   cleans up, and at half nine everybody else is asked to rate the night, one to
   five stars for the cooking and one to five for the cleaning. The first rating
@@ -138,7 +138,6 @@ There is no test suite and no CI, by design. This is the checklist.
       everybody else.
 - [ ] Try to claim a name somebody already holds. It is refused rather than
       silently reassigned.
-- [ ] Log an expense. Every housemate sees it and the balances move.
 - [ ] After half nine, rate somebody else's night, then change your stars. The
       night shows as signed off and Stats moves. Try to rate your own night,
       and watch the database refuse it rather than the stars merely being
@@ -147,7 +146,6 @@ There is no test suite and no CI, by design. This is the checklist.
       rate it, and gone for anybody who did.
 - [ ] Ask for cover on a night, and have somebody else take it. The two days
       trade and nobody else moves.
-- [ ] Settle up with someone. Only the person being paid can record it.
 - [ ] Swap a day. The two people trade, and clearing it puts both back.
 - [ ] Add a weekly job for one flat. Only that flat's people take turns, the
       holder changes on the start date's weekday, and somebody else signs it off.

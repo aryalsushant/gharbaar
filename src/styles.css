@@ -39,7 +39,7 @@
   --aqua-glow: rgba(99, 230, 200, 0.28);
 
   /* Semantics that must never be confused with each other:
-     grocery money is aqua, fines are coral, birthdays are amber. */
+     done is aqua, errors are coral, warnings are amber. */
   --coral: #ff8a6b;
   --amber: #ffd48a;
 
@@ -719,7 +719,7 @@ h2 {
    it as a bead rather than a rounded box. */
 /* No catchlight. A white smear over a dark card renders as a grey sphere stuck
    on top of it, and the inset shadows already do the work of making the surface
-   read as wet. The money tiles prove it: same material, no highlight, better.
+   read as wet. The person cards prove it: same material, no highlight, better.
 */
 
 /* Two shapes, drifting. Slow enough to notice only if you look. */
@@ -1042,15 +1042,8 @@ h2 {
 }
 
 /* ---------------------------------------------------------------------------
-   Money
+   Fields and cards
    --------------------------------------------------------------------------- */
-
-/* The one question the ledger asks first, so it gets the whole width. */
-.ask {
-  display: block;
-  text-align: center;
-  text-decoration: none;
-}
 
 /* Six digits, spaced out so they read as a code rather than a number. */
 .code-input {
@@ -1058,85 +1051,6 @@ h2 {
   letter-spacing: 0.5em;
   text-align: center;
   padding-left: 0.5em;
-}
-
-/* A settle-up row that has opened up: the amount box drops below the line
-   rather than squeezing into it, so the number has room to be read. */
-.roster-list li.settling {
-  flex-wrap: wrap;
-}
-
-.settle-form {
-  flex-basis: 100%;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--hairline);
-}
-
-/* Everyone's standing as faces, because a column of names and numbers is a
-   spreadsheet and this is six people you live with. The tint carries the sign
-   as well as the figure, so a glance is enough. */
-
-.money-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
-  gap: 11px;
-  margin-top: 12px;
-}
-
-.money-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 22px 14px 18px;
-  text-align: center;
-  text-decoration: none;
-  color: var(--ink);
-  background: linear-gradient(150deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
-  border: 1px solid var(--hairline);
-  border-radius: 38% 62% 42% 58% / 44% 40% 60% 56%;
-  box-shadow: var(--wet);
-  backdrop-filter: blur(22px) saturate(170%);
-  -webkit-backdrop-filter: blur(22px) saturate(170%);
-  animation: surface 0.9s var(--ease-liquid) both;
-  transition:
-    transform 0.45s var(--ease-liquid),
-    border-color 0.45s var(--ease-liquid),
-    background 0.45s var(--ease-liquid);
-}
-
-.money-card:hover {
-  transform: translateY(-3px);
-  background: var(--glass-lift);
-}
-
-.money-card .avatar {
-  border-width: 2px;
-}
-
-.money-card.is-owed {
-  border-color: rgba(99, 230, 200, 0.35);
-}
-
-.money-card.is-owed .avatar {
-  border-color: rgba(99, 230, 200, 0.55);
-}
-
-.money-card.is-owed .money-amount {
-  color: var(--aqua);
-}
-
-.money-card.is-owing {
-  border-color: rgba(255, 138, 107, 0.32);
-}
-
-.money-card.is-owing .avatar {
-  border-color: rgba(255, 138, 107, 0.5);
-}
-
-.money-card.is-owing .money-amount {
-  color: var(--coral);
 }
 
 /* A card with no affordance reads as a label rather than a door, so each one
@@ -1173,21 +1087,7 @@ h2 {
   transform: translateX(2px);
 }
 
-.money-name {
-  font-family: var(--display);
-  font-weight: 600;
-  font-size: 1.05rem;
-  letter-spacing: -0.02em;
-  margin-top: 2px;
-}
-
-.money-amount {
-  font-size: 1.05rem;
-  letter-spacing: -0.04em;
-  color: var(--ink-faint);
-}
-
-/* Chips: categories, apartments, people. One control shape for every "pick
+/* Chips: apartments, people, how often. One control shape for every "pick
    from a short list", so the form does not turn into four different widgets. */
 
 .chips {
@@ -1230,40 +1130,7 @@ h2 {
   padding: 6px 14px 6px 6px;
 }
 
-.amount-field {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.amount-sign {
-  position: absolute;
-  left: 16px;
-  font-size: 1.5rem;
-  color: var(--ink-faint);
-  pointer-events: none;
-}
-
-.amount-input {
-  font-size: 1.9rem;
-  padding-left: 38px;
-  letter-spacing: -0.04em;
-}
-
-/* Strip the browser's spinners. They are ugly and nobody nudges a bill up by
-   one cent at a time. */
-.amount-input::-webkit-outer-spin-button,
-.amount-input::-webkit-inner-spin-button {
-  appearance: none;
-  margin: 0;
-}
-
-.amount-input[type='number'] {
-  appearance: textfield;
-  -moz-appearance: textfield;
-}
-
-/* A chosen person, in either the paid-by row or the split-between row. */
+/* A chosen answer, such as Done or Not today on your own chore. */
 .btn-quiet.is-on {
   color: var(--aqua);
   border-color: rgba(99, 230, 200, 0.55);
@@ -1303,12 +1170,6 @@ h2 {
 
 .expense-meta {
   grid-area: who;
-}
-
-.expense-amount {
-  grid-area: amount;
-  font-size: 1.05rem;
-  color: var(--aqua);
 }
 
 /* ---------------------------------------------------------------------------
@@ -1356,10 +1217,6 @@ h2 {
   letter-spacing: -0.02em;
 }
 
-.person-net {
-  font-size: 0.72rem;
-}
-
 .flag-birthday {
   color: var(--amber);
   border-color: rgba(255, 212, 138, 0.4);
@@ -1404,31 +1261,6 @@ h2 {
 
 .faced-link:hover {
   border-bottom-color: var(--aqua);
-}
-
-/* Every expense opens to show who carried what. Seeing the total and the payer
-   without the split makes a two-way bill look identical to a six-way one, which
-   is exactly the thing worth checking. */
-
-.expense-row.is-open {
-  border-color: rgba(99, 230, 200, 0.4);
-  background: rgba(99, 230, 200, 0.06);
-}
-
-.split-detail {
-  list-style: none;
-  margin: 0;
-  padding: 10px 16px 4px;
-}
-
-.split-detail li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 7px 0;
-  font-size: 0.94rem;
-  color: var(--ink-soft);
 }
 
 /* ---------------------------------------------------------------------------
