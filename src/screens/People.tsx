@@ -3,25 +3,18 @@ import { Link } from 'react-router-dom';
 
 import { Avatar } from '../components/Avatar';
 import { Nav } from '../components/Nav';
-import { computeBalances, formatMoney } from '../lib/balances';
 import { APARTMENTS } from '../lib/categories';
 import {
   dinnerOf,
   useCompletions,
-  useExpenses,
   useHousehold,
   useResponsibilities,
   useRoster,
-  useSettlements,
-  useSplits,
 } from '../lib/db';
 import { fairnessNote, standings } from '../lib/fairness';
 
 export function People() {
   const house = useHousehold();
-  const expenses = useExpenses();
-  const splits = useSplits();
-  const settlements = useSettlements();
 
   const [flat, setFlat] = useState<string | null>(null);
 
@@ -31,8 +24,6 @@ export function People() {
 
   const memberIds = useMemo(() => (house.data ?? []).map((p) => p.id), [house.data]);
 
-  // Balances always cover the whole house. Filtering is about who you are
-  // looking at, not about recalculating what they owe.
   const shown = (house.data ?? []).filter((p) => !flat || p.apartment === flat);
 
   /**
@@ -42,14 +33,6 @@ export function People() {
    */
   const everybodyIn = (house.data?.length ?? 0) >= (roster.data?.length ?? 6);
   const { byPerson } = standings(completions.data ?? [], memberIds);
-
-  // Settlements count here as they do everywhere else. Leaving them out meant
-  // this page kept saying somebody owed money after it had been handed over,
-  // while the ledger and their own card said square.
-  const balances = useMemo(
-    () => computeBalances(expenses.data ?? [], splits.data ?? [], memberIds, settlements.data ?? []),
-    [expenses.data, splits.data, memberIds, settlements.data]
-  );
 
   return (
     <div className="centered wide">
@@ -80,54 +63,41 @@ export function People() {
       </div>
 
       <div className="people-grid stack-lg">
-        {shown.map((person, i) => {
-          const net = balances.find((b) => b.user_id === person.id)?.net ?? 0;
+        {shown.map((person, i) => (
+          <Link
+            key={person.id}
+            to={`/house/${person.id}`}
+            className="person-card rise"
+            style={{ animationDelay: `${0.1 + i * 0.06}s` }}
+          >
+            <Avatar
+              rosterKey={person.roster_key}
+              name={person.display_name}
+              url={person.avatar_url}
+              size={62}
+            />
+            <span className="person-name">{person.display_name}</span>
+            <span className="tag">{person.apartment ?? ''}</span>
 
-          return (
-            <Link
-              key={person.id}
-              to={`/house/${person.id}`}
-              className="person-card rise"
-              style={{ animationDelay: `${0.1 + i * 0.06}s` }}
-            >
-              <Avatar
-                rosterKey={person.roster_key}
-                name={person.display_name}
-                url={person.avatar_url}
-                size={62}
-              />
-              <span className="person-name">{person.display_name}</span>
-              <span className="tag">{person.apartment ?? ''}</span>
+            {everybodyIn && fairnessNote(byPerson.get(person.id)) && (
+              <span className="flag flag-swap">{fairnessNote(byPerson.get(person.id))}</span>
+            )}
 
-              <span
-                className="figure person-net"
-                style={{
-                  color:
-                    net > 0.004 ? 'var(--aqua)' : net < -0.004 ? 'var(--coral)' : 'var(--ink-faint)',
-                }}
-              >
-                {net > 0.004 ? `owed ${formatMoney(net)}` : net < -0.004 ? `owes ${formatMoney(net)}` : 'square'}
-              </span>
-              {everybodyIn && fairnessNote(byPerson.get(person.id)) && (
-                <span className="flag flag-swap">{fairnessNote(byPerson.get(person.id))}</span>
-              )}
-
-              {/* The whole card is the link. The corner mark says so, since a
-                  card that only looks like a card gets read as a label. */}
-              <span className="card-open" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M9 6l6 6-6 6"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-            </Link>
-          );
-        })}
+            {/* The whole card is the link. The corner mark says so, since a
+                card that only looks like a card gets read as a label. */}
+            <span className="card-open" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M9 6l6 6-6 6"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+          </Link>
+        ))}
       </div>
     </div>
   );
