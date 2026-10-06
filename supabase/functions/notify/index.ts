@@ -2,7 +2,6 @@ import {
   authorised,
   household,
   longDate,
-  money,
   pushTo,
   serviceClient,
   whenPhrase,
@@ -14,8 +13,8 @@ import {
  *
  * Called by database triggers rather than on a schedule, so the row that caused
  * it arrives in the body. That matters: reading it from the payload rather than
- * querying for "the latest expense" means two people adding a bill at the same
- * second get two correct notifications instead of two copies of one.
+ * querying for "the latest request" means two people asking for cover at the
+ * same second get two correct notifications instead of two copies of one.
  *
  * Nobody is ever told about their own action.
  *
@@ -23,7 +22,7 @@ import {
  */
 
 type Payload = {
-  kind: 'expense' | 'settlement' | 'swap_request' | 'swap_taken';
+  kind: 'swap_request' | 'swap_taken';
   row: Record<string, unknown>;
 };
 
@@ -47,54 +46,9 @@ Deno.serve(async (request) => {
 
   let message: Message;
   let exclude: string[] = [];
-  let audience = people.map((p) => p.id);
+  const audience = people.map((p) => p.id);
 
   switch (kind) {
-    case 'expense': {
-      const payer = row.paid_by as string;
-      const what = (row.description as string)?.trim() || 'an expense';
-      const where = row.apartment ? ` (${row.apartment})` : '';
-      message = {
-        title: `${nameOf(payer)} paid ${money(row.amount as number)}`,
-        body: `${what}${where}. Tap to see the split.`,
-        url: '/money',
-        tag: `expense-${row.id}`,
-      };
-      exclude = [payer];
-
-      // A flat's bill is not news to the other flat.
-      //
-      // Worked out from who lives there, not from the expense's splits. The
-      // trigger fires the moment the expense row lands and the client writes
-      // the splits immediately after, so reading them here finds nothing and
-      // every apartment bill would notify nobody at all.
-      if (row.apartment) {
-        const { data: residents } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('apartment', row.apartment as string)
-          .not('roster_key', 'is', null);
-        audience = (residents ?? []).map((r) => r.id as string);
-      }
-      break;
-    }
-
-    case 'settlement': {
-      // The recipient records it, so the payer is the one who wants to know it
-      // was acknowledged.
-      const from = row.from_user as string;
-      const to = row.to_user as string;
-      message = {
-        title: `${nameOf(to)} marked your ${money(row.amount as number)} received`,
-        body: 'You are square with them on that.',
-        url: '/money',
-        tag: `settlement-${row.id}`,
-      };
-      audience = [from];
-      exclude = [to];
-      break;
-    }
-
     case 'swap_request': {
       const asker = row.requested_by as string;
       message = {
