@@ -3,7 +3,7 @@
 Design notes for whoever works on this next. The README covers setup and the
 hand-run checklist; this is the reasoning behind the shape of the code.
 
-Expense splitting and a rotating cook/clean duty for one household of six. A browser
+A rotating cook/clean duty, a shared list and the other jobs for one household of six. A browser
 app (Vite, React, TypeScript) that installs as a PWA, with Supabase for Postgres,
 auth and RLS.
 
@@ -21,7 +21,7 @@ auth and RLS.
 
 - `src/screens/` one file per screen. `App.tsx` holds the routing and the three gates.
 - `src/lib/` `supabase.ts` (client), `auth.tsx` (session context), `db.ts` (every
-  React Query hook and every Supabase call), `rotation.ts`, `balances.ts`.
+  React Query hook and every Supabase call), `rotation.ts`.
 - `src/styles.css` the whole design system, in CSS custom properties.
 - `src/sw.ts` the service worker. Push handlers live here, not just caching.
 - `supabase/migrations/` schema, RLS and RPCs. `supabase/config.toml` project settings.
@@ -39,10 +39,9 @@ profile row and nothing else, so every other screen would render empty.
 ## Data model
 
 `profiles` mirrors `auth.users` and carries `roster_key` and `date_of_birth`.
-`expenses` has `expense_splits`, one row per person per expense. `responsibilities`
-has `responsibility_members` (rotation order), `responsibility_overrides` (swaps),
-`responsibility_completions` (confirmations) and `swap_requests` (asking for
-cover). `settlements` records money actually handed over.
+`responsibilities` has `responsibility_members` (rotation order),
+`responsibility_overrides` (swaps), `responsibility_completions` (confirmations) and
+`swap_requests` (asking for cover). `grocery_items` is the list.
 `dinner_ratings` holds one row per rater per night, with stars for cooking and
 cleaning. `push_subscriptions` holds one row per browser that granted permission.
 
@@ -78,9 +77,8 @@ STABLE` function. This is not optional: a policy on `profiles` that queries `pro
 directly recurses infinitely. `auth.uid()` is always wrapped as `(select auth.uid())`
 so the planner evaluates it once per query.
 
-Two rules are enforced in policies rather than in the UI, so calling the API directly
-does not get around them: a completion's `marked_by` may not equal the assignee, and a
-settlement can only be recorded by the person who received the money.
+One rule is enforced in policies rather than in the UI, so calling the API directly
+does not get around it: a completion's `marked_by` may not equal the assignee.
 
 ## Ratings
 
@@ -97,11 +95,11 @@ four, and then every number means nothing.
 
 ## Money
 
-All split math is in integer cents (`src/lib/balances.ts`). Floating point splits do
-not sum back to the total and the error compounds. `splitEqually` gives the leftover
-pennies to the earliest shares.
+There is none. Splitting groceries and bills lived here once, with balances and
+settle up, and was removed along with its tables: the house keeps money out of the
+app.
 
-There are no fines. A $10 penalty existed briefly and was removed: every rule for who
+There are no fines either. A $10 penalty existed briefly and was removed: every rule for who
 could issue one had a hole, and a house of friends settles a missed night by talking
 rather than by policy.
 
