@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 import { Avatar } from '../components/Avatar';
 import { Nav } from '../components/Nav';
-import { APARTMENTS } from '../lib/categories';
+import { APARTMENTS } from '../lib/apartments';
 import {
   dinnerOf,
   useCompletions,

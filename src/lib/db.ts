@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { fromCents, splitEqually, toCents } from './balances';
 import { supabase } from './supabase';
 
 export type Profile = {
@@ -8,7 +7,7 @@ export type Profile = {
   display_name: string;
   avatar_url: string | null;
   roster_key: string | null;
-  /** Which flat they live in. Bills split within one, food across the house. */
+  /** Which flat they live in. */
   apartment: string | null;
 };
 
@@ -21,26 +20,6 @@ export type RosterEntry = {
   claimed: boolean;
   /** Masked, like b****@gmail.com. Null when the seat is not bound yet. */
   email_hint: string | null;
-};
-
-export type Expense = {
-  id: string;
-  paid_by: string;
-  amount: number;
-  description: string;
-  category: string | null;
-  /** The flat a bill belongs to, or null for anything the house shares. */
-  apartment: string | null;
-  items: { name: string; quantity?: number; amount?: number }[] | null;
-  created_at: string;
-};
-
-export type ExpenseSplit = {
-  id: string;
-  expense_id: string;
-  user_id: string;
-  amount_owed: number;
-  settled: boolean;
 };
 
 export type Responsibility = {
@@ -157,190 +136,6 @@ export function useHousehold() {
   });
 }
 
-// --- expenses ---------------------------------------------------------------
-
-export function useExpenses() {
-  return useQuery({
-    queryKey: ['expenses'],
-    queryFn: async () =>
-      unwrap(
-        await supabase
-          .from('expenses')
-          .select('id, paid_by, amount, description, category, apartment, items, created_at')
-          .order('created_at', { ascending: false })
-      ) as Expense[],
-  });
-}
-
-export function useSplits() {
-  return useQuery({
-    queryKey: ['splits'],
-    queryFn: async () =>
-      unwrap(
-        await supabase
-          .from('expense_splits')
-          .select('id, expense_id, user_id, amount_owed, settled')
-      ) as ExpenseSplit[],
-  });
-}
-
-/**
- * Insert the expense, then its equal splits. Amounts are divided in integer
- * cents so the shares always add back up to the total.
- */
-export function useAddExpense() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      amount,
-      description,
-      paidBy,
-      memberIds,
-      category,
-      apartment,
-      items,
-    }: {
-      amount: number;
-      description: string;
-      paidBy: string;
-      memberIds: string[];
-      category?: string | null;
-      apartment?: string | null;
-      items?: Expense['items'];
-    }) => {
-      const expense = unwrap(
-        await supabase
-          .from('expenses')
-          .insert({
-            paid_by: paidBy,
-            amount,
-            description: description.trim(),
-            split_type: 'equal',
-            category: category ?? null,
-            apartment: apartment ?? null,
-            items: items ?? null,
-          })
-          .select('id')
-          .single()
-      ) as { id: string };
-
-      const shares = splitEqually(toCents(amount), memberIds.length);
-      const { error } = await supabase.from('expense_splits').insert(
-        memberIds.map((userId, i) => ({
-          expense_id: expense.id,
-          user_id: userId,
-          amount_owed: fromCents(shares[i]),
-        }))
-      );
-      if (error) throw new Error(error.message);
-      return expense;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['expenses'] });
-      qc.invalidateQueries({ queryKey: ['splits'] });
-    },
-  });
-}
-
-export function useExpense(id: string | undefined) {
-  return useQuery({
-    queryKey: ['expense', id],
-    queryFn: async () => {
-      const expense = unwrap(
-        await supabase
-          .from('expenses')
-          .select('id, paid_by, amount, description, category, apartment, items, created_at')
-          .eq('id', id!)
-          .single()
-      ) as Expense;
-      const splits = unwrap(
-        await supabase.from('expense_splits').select('user_id').eq('expense_id', id!)
-      ) as { user_id: string }[];
-      return { expense, sharedBy: splits.map((s) => s.user_id) };
-    },
-    enabled: !!id,
-  });
-}
-
-/**
- * Change an expense after the fact.
- *
- * The splits are replaced wholesale rather than reconciled row by row. Working
- * out which shares to add, update and remove is fiddly and the answer is always
- * the same set anyway, and it means a corrected amount can never leave a stale
- * share behind that quietly unbalances the ledger.
- */
-export function useEditExpense() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      id,
-      amount,
-      description,
-      paidBy,
-      memberIds,
-      category,
-      apartment,
-    }: {
-      id: string;
-      amount: number;
-      description: string;
-      paidBy: string;
-      memberIds: string[];
-      category?: string | null;
-      apartment?: string | null;
-    }) => {
-      const { error: updateError } = await supabase
-        .from('expenses')
-        .update({
-          paid_by: paidBy,
-          amount,
-          description: description.trim(),
-          category: category ?? null,
-          apartment: apartment ?? null,
-        })
-        .eq('id', id);
-      if (updateError) throw new Error(updateError.message);
-
-      const { error: clearError } = await supabase
-        .from('expense_splits')
-        .delete()
-        .eq('expense_id', id);
-      if (clearError) throw new Error(clearError.message);
-
-      const shares = splitEqually(toCents(amount), memberIds.length);
-      const { error } = await supabase.from('expense_splits').insert(
-        memberIds.map((userId, i) => ({
-          expense_id: id,
-          user_id: userId,
-          amount_owed: fromCents(shares[i]),
-        }))
-      );
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: ['expenses'] });
-      qc.invalidateQueries({ queryKey: ['splits'] });
-      qc.invalidateQueries({ queryKey: ['expense', variables.id] });
-    },
-  });
-}
-
-export function useDeleteExpense() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      // Splits go with it by cascade.
-      const { error } = await supabase.from('expenses').delete().eq('id', id);
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['expenses'] });
-      qc.invalidateQueries({ queryKey: ['splits'] });
-    },
-  });
-}
-
 // --- the list ---------------------------------------------------------------
 
 export type GroceryItem = {
@@ -406,7 +201,7 @@ export function useRemoveGroceryItem() {
   });
 }
 
-/** Everything in the basket goes once the shop is logged. */
+/** Everything in the basket goes once the shop is done. */
 export function useClearBasket() {
   const qc = useQueryClient();
   return useMutation({
@@ -511,69 +306,6 @@ export function useMarkChore(date: string) {
       if (error) throw new Error(error.message);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['chore-checks'] }),
-  });
-}
-
-// --- settling up ------------------------------------------------------------
-
-export type Settlement = {
-  id: string;
-  from_user: string;
-  to_user: string;
-  amount: number;
-  note: string;
-  settled_on: string;
-};
-
-export function useSettlements() {
-  return useQuery({
-    queryKey: ['settlements'],
-    queryFn: async () =>
-      unwrap(
-        await supabase
-          .from('settlements')
-          .select('id, from_user, to_user, amount, note, settled_on')
-          .order('settled_on', { ascending: false })
-      ) as Settlement[],
-  });
-}
-
-/**
- * Only the person who was paid can record it, which the policy enforces. A
- * payer logging their own payment is a claim; a recipient logging one is an
- * admission against interest, and nobody writes down money they did not get.
- */
-export function useRecordSettlement() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      fromUser,
-      toUser,
-      amount,
-      note = '',
-    }: {
-      fromUser: string;
-      toUser: string;
-      amount: number;
-      note?: string;
-    }) => {
-      const { error } = await supabase
-        .from('settlements')
-        .insert({ from_user: fromUser, to_user: toUser, amount, note });
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['settlements'] }),
-  });
-}
-
-export function useUnrecordSettlement() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('settlements').delete().eq('id', id);
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['settlements'] }),
   });
 }
 

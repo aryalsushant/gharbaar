@@ -35,7 +35,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       // A household of six is not a high-churn dataset, and refetching on every
-      // window focus makes the balances flicker on a phone that keeps waking.
+      // window focus makes the board flicker on a phone that keeps waking.
       refetchOnWindowFocus: false,
       staleTime: 30_000,
       gcTime: A_WEEK,
