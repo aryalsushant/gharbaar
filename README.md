@@ -10,7 +10,7 @@
   also signs the night off. A missed night is left unrated and nothing else
   happens: six friends do not need a penalty system, and no rule inside an app
   can decide whether dinner happened.
-- **Stats** shows each cook's average stars and how many ratings they have had.
+- **Stats** shows your own average stars and rating count first, then the house as a whole, then each cook.
   Who gave which stars is never shown, to anybody.
 - **A round** is a list of jobs the house agreed to do on one particular day,
   one each. Yours sits at the top of the board that day, answered yes or no by
