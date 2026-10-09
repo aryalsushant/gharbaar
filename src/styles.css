@@ -1791,3 +1791,8 @@ h2 {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Each block on Stats carries its own label, set off from what it labels. */
+.stats-section > .tag:first-child {
+  margin-bottom: 12px;
+}

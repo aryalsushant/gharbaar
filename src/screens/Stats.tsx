@@ -79,22 +79,13 @@ export function Stats() {
         </p>
       ) : (
         <>
-          <section className="stat-row stat-row-three stack-lg rise rise-2">
-            <div className="stat">
-              <span className="tag">Ratings</span>
-              <span className="figure stat-value">{total}</span>
-            </div>
-            <div className="stat">
-              <span className="tag">Cooking</span>
-              <span className="figure stat-value">{average(houseCooking, total) ?? 'none'}</span>
-            </div>
-            <div className="stat">
-              <span className="tag">Cleaning</span>
-              <span className="figure stat-value">{average(houseCleaning, total) ?? 'none'}</span>
-            </div>
+          <section className="stats-section stack-lg rise rise-3">
+            <p className="tag">The whole house</p>
+            <StatTiles ratings={total} cooking={houseCooking} cleaning={houseCleaning} />
           </section>
 
-          <section className="stack-lg rise rise-3">
+          <section className="stats-section stack-lg rise rise-4">
+            <p className="tag">Everybody</p>
             <div className="rating-table-head">
               <span className="tag">Cook</span>
               <span className="tag">Cooking</span>
@@ -117,6 +108,34 @@ export function Stats() {
           </section>
         </>
       )}
+    </div>
+  );
+}
+
+/** Ratings, then the cooking and cleaning averages, as three tiles. */
+function StatTiles({
+  ratings,
+  cooking,
+  cleaning,
+}: {
+  ratings: number;
+  cooking: number;
+  cleaning: number;
+}) {
+  return (
+    <div className="stat-row stat-row-three">
+      <div className="stat">
+        <span className="tag">Ratings</span>
+        <span className="figure stat-value">{ratings}</span>
+      </div>
+      <div className="stat">
+        <span className="tag">Cooking</span>
+        <span className="figure stat-value">{average(cooking, ratings) ?? 'none'}</span>
+      </div>
+      <div className="stat">
+        <span className="tag">Cleaning</span>
+        <span className="figure stat-value">{average(cleaning, ratings) ?? 'none'}</span>
+      </div>
     </div>
   );
 }
