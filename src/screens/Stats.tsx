@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Avatar } from '../components/Avatar';
 import { Nav } from '../components/Nav';
 import { StarMark } from '../components/RateDinner';
+import { useAuth } from '../lib/auth';
 import { useHousehold, useRatingStats, useRoster, type RatingStat } from '../lib/db';
 
 /** 4.3, or nothing at all when there is nothing to average. */
@@ -22,6 +23,7 @@ function average(value: number, count: number): string | null {
  * rather than as missing.
  */
 export function Stats() {
+  const { userId } = useAuth();
   const roster = useRoster();
   const house = useHousehold();
   const stats = useRatingStats();
@@ -38,6 +40,7 @@ export function Stats() {
         const stat: RatingStat | undefined = person ? byUser.get(person.id) : undefined;
         return {
           key: seat.key,
+          userId: person?.id ?? null,
           name: person?.display_name ?? seat.display_name,
           avatar: person?.avatar_url ?? null,
           ratings: stat?.ratings ?? 0,
@@ -52,6 +55,8 @@ export function Stats() {
   const total = rows.reduce((sum, r) => sum + r.ratings, 0);
   const houseCooking = total ? rows.reduce((sum, r) => sum + r.cooking * r.ratings, 0) / total : 0;
   const houseCleaning = total ? rows.reduce((sum, r) => sum + r.cleaning * r.ratings, 0) / total : 0;
+
+  const mine = rows.find((r) => r.userId !== null && r.userId === userId);
 
   if (roster.isLoading || house.isLoading || stats.isLoading) {
     return (
@@ -79,6 +84,13 @@ export function Stats() {
         </p>
       ) : (
         <>
+          {mine && (
+            <section className="stats-section stack-lg rise rise-2">
+              <p className="tag">Your stats</p>
+              <StatTiles ratings={mine.ratings} cooking={mine.cooking} cleaning={mine.cleaning} />
+            </section>
+          )}
+
           <section className="stats-section stack-lg rise rise-3">
             <p className="tag">The whole house</p>
             <StatTiles ratings={total} cooking={houseCooking} cleaning={houseCleaning} />
